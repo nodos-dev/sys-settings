@@ -1,3 +1,14 @@
+# Copyright MediaZ Teknoloji A.S. All Rights Reserved.
+cmake_minimum_required(VERSION 3.24.2)
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+set(CMAKE_CXX_STANDARD 20)
+
+if (NOT WITH_NODOS_WORKSPACE)
+    message(FATAL_ERROR "This repo currently does not support builds without Nodos workspace. "
+    "Place this repo under nodos-workspace/Module folder and run cmake -S ./Toolchain/CMake -B Build from workspace root.")
+endif()
+
 set(USE_NOS_SDK_VERSION "1.3.0")
 nos_find_sdk("1.3.0" NOS_PLUGIN_SDK_TARGET NOS_SUBSYSTEM_SDK_TARGET NOS_SDK_DIR)
 if (NOT DEFINED NOS_SDK_DIR)
@@ -13,3 +24,5 @@ nos_add_subsystem("nosSettingsSubsystem" "${MODULE_DEPENDENCIES_TARGETS}" "${INC
 
 #Helpers need C++20
 set_target_properties("nosSettingsSubsystem" PROPERTIES CXX_STANDARD 20)
+
+nos_group_targets("nosSettingsSubsystem" "NOS Subsystems")
