@@ -79,18 +79,17 @@ nosResult SettingsFileManager::ReadSettingsFile(std::filesystem::path filePath, 
 		std::memcpy(json, content.c_str(), content.size() + 1); // Copy content to json
 	}
 
-	nosBuffer data = {};
-	if (nosEngine.GenerateBufferFromJson(NSN_MODULE_SETTINGS_TYPENAME, json, &data) != NOS_RESULT_SUCCESS) {
+	auto data = nos::GenerateBufferFromJson(NSN_MODULE_SETTINGS_TYPENAME, json);
+	if (!data) {
 		nosEngine.LogE("Failed to generate buffer from JSON for nosSettingsSubsystem");
 		return NOS_RESULT_FAILED;
 	}
 
 
-	const auto& rootTable = flatbuffers::GetRoot<nos::sys::settings::ModuleSettings>(data.Data);
-	flatbuffers::Verifier verifier((uint8_t*)data.Data, data.Size);
+	const auto& rootTable = data->As<nos::sys::settings::ModuleSettings>();
+	flatbuffers::Verifier verifier((uint8_t*)data->Data(), data->Size());
 	if (!rootTable->Verify(verifier)) {
 		nosEngine.LogW("Failed to verify the settings file: %s", filePath.c_str());
-		nosEngine.FreeBuffer(&data);
 		free(json);
 		return NOS_RESULT_FAILED;
 	}
@@ -102,7 +101,6 @@ nosResult SettingsFileManager::ReadSettingsFile(std::filesystem::path filePath, 
 		}
 	}
 
-	nosEngine.FreeBuffer(&data);
 	free(json);
 	return NOS_RESULT_SUCCESS;
 }
@@ -144,11 +142,8 @@ nosResult SettingsFileManager::ReadSettings(nosSettingsEntryParams* params)
 			return NOS_RESULT_FAILED;
 		}
 		auto& localBuf = entryData->second;
-		auto ret = nosEngine.AllocateBuffer(localBuf.Size(), &params->Buffer);
-		if (ret != NOS_RESULT_SUCCESS) {
-			nosEngine.LogE("Failed to allocate buffer for settings entry %s", params->EntryName);
-			return ret;
-		}
+		params->Buffer = EngineBuffer::Allocate(localBuf.Size()).Release();
+		
 		params->TypeName = typeName;
 
 		memcpy(params->Buffer.Data, localBuf.Data(), localBuf.Size());
@@ -200,16 +195,14 @@ nosResult SettingsFileManager::WriteSettingsFile(const SettingsFile& settingsFil
 
 	auto data = nos::Buffer::From(moduleSettings);
 
-	char* json = nullptr;
-	auto ret = nosEngine.GenerateJsonFromBuffer(NSN_MODULE_SETTINGS_TYPENAME, data.GetInternal(), &json);
-	if (ret != NOS_RESULT_SUCCESS) {
+	auto json = GenerateJsonFromBuffer(NSN_MODULE_SETTINGS_TYPENAME, data);
+	if (!json) {
 		nosEngine.LogE("Failed to generate JSON from buffer for nosSettingsSubsystem");
-		return ret;
+		return NOS_RESULT_FAILED;
 	}
 
-	file << json;
+	file << json->AsCStr();
 	file.close();
-	nosEngine.FreeString(json);
 	return NOS_RESULT_SUCCESS;
 };
 

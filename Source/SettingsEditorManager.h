@@ -12,7 +12,7 @@ struct SettingsEditorManager
 	struct RegisteredModuleSettings
 	{
 		nosModuleInfo ModuleInfo;
-		nos::Buffer UpdateToEditor;
+		nos::Table<nos::sys::settings::editor::SettingsUpdateFromSubsystem> UpdateToEditor;
 		nosPfnSettingsItemUpdate ItemUpdateCallback = nullptr;
 		nosSettingsFileDirectory SaveDirectory;
 	};

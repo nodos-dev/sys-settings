@@ -37,7 +37,9 @@ nosResult SettingsEditorManager::RegisterEditorSettings(u64 itemCount, const nos
 	registeredModuleInfo.ModuleInfo = module;
 	registeredModuleInfo.UpdateToEditor = nos::Buffer::From(update);
 	registeredModuleInfo.SaveDirectory = saveDirectory;
-	nosEngine.SendCustomMessageToEditors(NOS_NAME_STATIC(NOS_SETTINGS_SUBSYSTEM_NAME), registeredModuleInfo.UpdateToEditor);
+	nosSendEditorMessageParams params{.Message = registeredModuleInfo.UpdateToEditor,
+									  .DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_BROADCAST};
+	nosEngine.SendEditorMessage(&params);
 	return NOS_RESULT_SUCCESS;
 }
 
@@ -52,7 +54,9 @@ nosResult SettingsEditorManager::UnregisterEditorSettings()
 	{
 		nos::sys::settings::editor::TSettingsUpdateFromSubsystem list;
 		list.module_name = moduleName;
-		nosEngine.SendCustomMessageToEditors(NOS_NAME_STATIC(NOS_SETTINGS_SUBSYSTEM_NAME), nos::Buffer::From(list));
+		auto buf = nos::Buffer::From(list);
+		nosSendEditorMessageParams params{.Message = buf, .DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_BROADCAST};
+		nosEngine.SendEditorMessage(&params);
 		RegisteredModules.erase(it);
 		return NOS_RESULT_SUCCESS;
 	}
@@ -63,7 +67,10 @@ nosResult SettingsEditorManager::UnregisterEditorSettings()
 void SettingsEditorManager::OnEditorConnected(uint64_t editorId)
 {
 	for (auto& [moduleName, registeredModuleInfo] : RegisteredModules) {
-		nosEngine.SendCustomMessageToEditors(NOS_NAME_STATIC(NOS_SETTINGS_SUBSYSTEM_NAME), registeredModuleInfo.UpdateToEditor);
+		nosSendEditorMessageParams params{.Message = registeredModuleInfo.UpdateToEditor,
+										  .DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_TO_SELECTED,
+										  .ToSelected = {editorId}};
+		nosEngine.SendEditorMessage(&params);
 	}
 }
 
