@@ -1,5 +1,5 @@
 // Copyright Nodos AS. All Rights Reserved.
-#include <Nodos/SubsystemAPI.h>
+#include <Nodos/PluginAPI.h>
 #include <nosSettingsSubsystem/nosSettingsSubsystem.h>
 #include <nosSettingsSubsystem/EditorEvents_generated.h>
 #include <unordered_map>
@@ -12,8 +12,8 @@ namespace nos::sys::settings
 {
 nosResult SettingsEditorManager::RegisterEditorSettings(u64 itemCount, const nosSettingsEditorItem** itemList, nosPfnSettingsItemUpdate itemUpdateCallback, nosSettingsFileDirectory saveDirectory)
 {
-	nosModuleInfo module = {};
-	if (nosEngine.GetCallingModule(&module) != NOS_RESULT_SUCCESS)
+	nosPluginInfo module = {};
+	if (nosEngine.GetCallingPlugin(&module) != NOS_RESULT_SUCCESS)
 		return NOS_RESULT_FAILED;
 
 	if (itemUpdateCallback == nullptr) {
@@ -34,7 +34,7 @@ nosResult SettingsEditorManager::RegisterEditorSettings(u64 itemCount, const nos
 	std::unique_lock lock(RegisteredModulesMutex);
 	auto& registeredModuleInfo = RegisteredModules[nos::Name(module.Id.Name).AsString()];
 	registeredModuleInfo.ItemUpdateCallback = itemUpdateCallback;
-	registeredModuleInfo.ModuleInfo = module;
+	registeredModuleInfo.PluginInfo = module;
 	registeredModuleInfo.UpdateToEditor = nos::Buffer::From(update);
 	registeredModuleInfo.SaveDirectory = saveDirectory;
 	nosSendEditorMessageParams params{.Message = registeredModuleInfo.UpdateToEditor,
@@ -45,8 +45,8 @@ nosResult SettingsEditorManager::RegisterEditorSettings(u64 itemCount, const nos
 
 nosResult SettingsEditorManager::UnregisterEditorSettings()
 {
-	nosModuleInfo module = {};
-	if (nosEngine.GetCallingModule(&module) != NOS_RESULT_SUCCESS)
+	nosPluginInfo module = {};
+	if (nosEngine.GetCallingPlugin(&module) != NOS_RESULT_SUCCESS)
 		return NOS_RESULT_FAILED;
 	std::unique_lock lock(RegisteredModulesMutex);
 	auto moduleName = nos::Name(module.Id.Name);
@@ -92,7 +92,7 @@ void SettingsEditorManager::OnMessageFromEditor(uint64_t editorId, nosBuffer mes
 		params.EntryName = msg->entry()->entry_name()->c_str();
 		params.TypeName = nos::Name(msg->entry()->type_name()->c_str());
 		params.Buffer = { msg->mutable_entry()->mutable_data()->data(), msg->entry()->data()->size() };
-		GSettingsFileManager->WriteSettings(&params, it->second.ModuleInfo);
+		GSettingsFileManager->WriteSettings(&params, it->second.PluginInfo);
 	}
 }
 }

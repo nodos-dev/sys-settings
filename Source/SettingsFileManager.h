@@ -1,5 +1,5 @@
 // Copyright Nodos AS. All Rights Reserved.
-#include <Nodos/SubsystemAPI.h>
+#include <Nodos/PluginAPI.h>
 #include <nosSettingsSubsystem/nosSettingsSubsystem.h>
 #include <nosSettingsSubsystem/Types_generated.h>
 #include <unordered_map>
@@ -19,12 +19,12 @@ struct SettingsFileManager
 	// ModuleName-Version -> [SettingsFile]
 	std::unordered_map<std::string, std::vector<SettingsFile>> SettingsFiles;
 	std::mutex SettingsFilesMutex;
-	SettingsFile& FindOrCreateSettingsFile(nosModuleInfo const& module, nosSettingsFileDirectory dir);
-	std::filesystem::path GetSettingsFilePath(nosSettingsFileDirectory dir, const nosModuleInfo& moduleInfo) const;
+	SettingsFile& FindOrCreateSettingsFile(nosPluginInfo const& module, nosSettingsFileDirectory dir);
+	std::filesystem::path GetSettingsFilePath(nosSettingsFileDirectory dir, const nosPluginInfo& moduleInfo) const;
 	nosResult ReadSettingsFile(std::filesystem::path filePath, SettingsFile& file);
 	nosResult ReadSettings(nosSettingsEntryParams* params);
 	nosResult WriteSettings(const nosSettingsEntryParams* params);
-	nosResult WriteSettings(const nosSettingsEntryParams* params, const nosModuleInfo& callingModule);
-	nosResult WriteSettingsFile(const SettingsFile& settingsFile, const nosModuleInfo& info) const;
+	nosResult WriteSettings(const nosSettingsEntryParams* params, const nosPluginInfo& callingModule);
+	nosResult WriteSettingsFile(const SettingsFile& settingsFile, const nosPluginInfo& info) const;
 };
 }

@@ -1,5 +1,5 @@
 // Copyright Nodos AS. All Rights Reserved.
-#include <Nodos/SubsystemAPI.h>
+#include <Nodos/PluginAPI.h>
 #include <nosSettingsSubsystem/nosSettingsSubsystem.h>
 #include <nosSettingsSubsystem/EditorEvents_generated.h>
 #include <unordered_map>
