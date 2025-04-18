@@ -1,5 +1,5 @@
 // Copyright Nodos AS. All Rights Reserved.
-#include <Nodos/SubsystemAPI.h>
+#include <Nodos/PluginAPI.h>
 #include <nosSettingsSubsystem/nosSettingsSubsystem.h>
 #include <nosSettingsSubsystem/Types_generated.h>
 #include <nosSettingsSubsystem/EditorEvents_generated.h>
@@ -18,12 +18,12 @@ static constexpr nosSettingsFileDirectory DIRECTORIES_CLOSEST_TO_FARTHEST[] = {
 	NOS_SETTINGS_FILE_DIRECTORY_GLOBAL
 };
 
-std::string GetSettingsFileName(nosModuleInfo const& module)
+std::string GetSettingsFileName(nosPluginInfo const& module)
 {
 	return std::string(nosEngine.GetString(module.Id.Name)) + "-" + std::string(nosEngine.GetString(module.Id.Version));
 }
 
-std::filesystem::path SettingsFileManager::GetSettingsFilePath(nosSettingsFileDirectory dir, const nosModuleInfo& moduleInfo) const
+std::filesystem::path SettingsFileManager::GetSettingsFilePath(nosSettingsFileDirectory dir, const nosPluginInfo& moduleInfo) const
 {
 	std::string fileName = GetSettingsFileName(moduleInfo) + ".json";
 	switch (dir)
@@ -46,7 +46,7 @@ std::filesystem::path SettingsFileManager::GetSettingsFilePath(nosSettingsFileDi
 	}
 }
 
-SettingsFileManager::SettingsFile& SettingsFileManager::FindOrCreateSettingsFile(nosModuleInfo const& module, nosSettingsFileDirectory dir)
+SettingsFileManager::SettingsFile& SettingsFileManager::FindOrCreateSettingsFile(nosPluginInfo const& module, nosSettingsFileDirectory dir)
 {
 	std::string fileName = GetSettingsFileName(module);
 	auto& fileList = SettingsFiles[fileName];
@@ -107,8 +107,8 @@ nosResult SettingsFileManager::ReadSettingsFile(std::filesystem::path filePath, 
 
 nosResult SettingsFileManager::ReadSettings(nosSettingsEntryParams* params)
 {
-	nosModuleInfo module = {};
-	if (nosEngine.GetCallingModule(&module) != NOS_RESULT_SUCCESS)
+	nosPluginInfo module = {};
+	if (nosEngine.GetCallingPlugin(&module) != NOS_RESULT_SUCCESS)
 		return NOS_RESULT_FAILED;
 	auto fileName = GetSettingsFileName(module);
 	std::unique_lock lock(SettingsFilesMutex);
@@ -155,13 +155,13 @@ nosResult SettingsFileManager::ReadSettings(nosSettingsEntryParams* params)
 
 nosResult SettingsFileManager::WriteSettings(const nosSettingsEntryParams* params)
 {
-	nosModuleInfo module = {};
-	if (nosEngine.GetCallingModule(&module) != NOS_RESULT_SUCCESS)
+	nosPluginInfo module = {};
+	if (nosEngine.GetCallingPlugin(&module) != NOS_RESULT_SUCCESS)
 		return NOS_RESULT_FAILED;
 	return WriteSettings(params, module);
 }
 
-nosResult SettingsFileManager::WriteSettings(const nosSettingsEntryParams* params, const nosModuleInfo& module)
+nosResult SettingsFileManager::WriteSettings(const nosSettingsEntryParams* params, const nosPluginInfo& module)
 {
 	std::unique_lock lock(SettingsFilesMutex);
 	SettingsFile& settings = FindOrCreateSettingsFile(module, params->Directory);
@@ -171,7 +171,7 @@ nosResult SettingsFileManager::WriteSettings(const nosSettingsEntryParams* param
 	return WriteSettingsFile(settings, module);
 }
 
-nosResult SettingsFileManager::WriteSettingsFile(const SettingsFile& settingsFile, const nosModuleInfo& info) const
+nosResult SettingsFileManager::WriteSettingsFile(const SettingsFile& settingsFile, const nosPluginInfo& info) const
 {
 	std::ofstream file(GetSettingsFilePath(settingsFile.Directory, info));
 	flatbuffers::FlatBufferBuilder builder;

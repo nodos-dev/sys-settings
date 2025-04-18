@@ -50,13 +50,13 @@ typedef struct nosSettingsSubsystem
 #define NOS_SETTINGS_SUBSYSTEM_NAME "nos.sys.settings"
 
 #define NOS_SETTINGS_SUBSYSTEM_VERSION_MAJOR 0
-#define NOS_SETTINGS_SUBSYSTEM_VERSION_MINOR 3
+#define NOS_SETTINGS_SUBSYSTEM_VERSION_MINOR 10
 
-extern struct nosModuleInfo nosSettingsModuleInfo;
+extern struct nosPluginInfo nosSettingsModuleInfo;
 extern nosSettingsSubsystem* nosSettings;
 
 #define NOS_SETTINGS_INIT()                                                                                              \
-	nosModuleInfo nosSettingsModuleInfo;                                                                                 \
+	nosPluginInfo nosSettingsModuleInfo;                                                                                 \
 	nosSettingsSubsystem* nosSettings = nullptr;
 
 #define NOS_SETTINGS_IMPORT() NOS_IMPORT_DEP(NOS_SETTINGS_SUBSYSTEM_NAME, nosSettingsModuleInfo, nosSettings)

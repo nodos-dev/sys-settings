@@ -1,5 +1,5 @@
 // Copyright Nodos AS. All Rights Reserved.
-#include <Nodos/SubsystemAPI.h>
+#include <Nodos/PluginAPI.h>
 #include <nosSettingsSubsystem/nosSettingsSubsystem.h>
 #include <nosSettingsSubsystem/EditorEvents_generated.h>
 #include <unordered_map>
@@ -18,7 +18,7 @@ namespace nos::sys::settings {
 	std::unordered_map<uint32_t, std::unique_ptr<nosSettingsSubsystem>> GExportedSubsystemVersions;
 }
 
-nosResult NOSAPI_CALL OnPreUnloadSubsystem()
+nosResult NOSAPI_CALL OnPreUnloadPlugin()
 {
 	settings::GSettingsFileManager = nullptr;
 	settings::GSettingsEditorManager = nullptr;
@@ -44,12 +44,12 @@ extern "C"
 		return NOS_RESULT_SUCCESS;
 	}
 
-	NOSAPI_ATTR nosResult NOSAPI_CALL nosExportSubsystem(nosSubsystemFunctions* subsystemFunctions)
+	NOSAPI_ATTR nosResult NOSAPI_CALL nosExportPlugin(nosPluginFunctions* pluginFunctions)
 	{
-		subsystemFunctions->OnRequest = OnRequest;
-		subsystemFunctions->OnPreUnloadSubsystem = OnPreUnloadSubsystem;
-		subsystemFunctions->OnEditorConnected = [](uint64_t editorId) {settings::GSettingsEditorManager->OnEditorConnected(editorId); };
-		subsystemFunctions->OnMessageFromEditor = [](uint64_t editorId, nosBuffer message) { settings::GSettingsEditorManager->OnMessageFromEditor(editorId, message); };
+		pluginFunctions->OnRequest = OnRequest;
+		pluginFunctions->OnPreUnloadPlugin = OnPreUnloadPlugin;
+		pluginFunctions->OnEditorConnected = [](uint64_t editorId) {settings::GSettingsEditorManager->OnEditorConnected(editorId); };
+		pluginFunctions->OnMessageFromEditor = [](uint64_t editorId, nosBuffer message) { settings::GSettingsEditorManager->OnMessageFromEditor(editorId, message); };
 		settings::GSettingsFileManager.reset(new settings::SettingsFileManager());
 		settings::GSettingsEditorManager.reset(new settings::SettingsEditorManager());
 
