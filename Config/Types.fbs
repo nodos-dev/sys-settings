@@ -22,3 +22,7 @@ table ModuleSettings{
     module_version:string;
     settings: [SettingsEntry];
 }
+
+table ModuleSettingsList{
+    module_settings: [ModuleSettings];
+}

@@ -10,6 +10,7 @@
 
 namespace nos::sys::settings {
 NOS_REGISTER_NAME_SPACED(MODULE_SETTINGS_TYPENAME, nos::sys::settings::ModuleSettings::GetFullyQualifiedName());
+NOS_REGISTER_NAME_SPACED(MODULE_SETTINGS_LIST_TYPENAME, nos::sys::settings::ModuleSettingsList::GetFullyQualifiedName());
 static constexpr char DEFAULT_SETTINGS_ENTRY_NAME[] = "default";
 
 static constexpr nosSettingsFileDirectory DIRECTORIES_CLOSEST_TO_FARTHEST[] = {
@@ -20,7 +21,7 @@ static constexpr nosSettingsFileDirectory DIRECTORIES_CLOSEST_TO_FARTHEST[] = {
 
 std::string GetSettingsFileName(nosPluginInfo const& module)
 {
-	return std::string(nosEngine.GetString(module.Id.Name)) + "-" + std::string(nosEngine.GetString(module.Id.Version));
+	return std::string(nosEngine.GetString(module.Id.Name));
 }
 
 std::filesystem::path SettingsFileManager::GetSettingsFilePath(nosSettingsFileDirectory dir, const nosPluginInfo& moduleInfo) const
@@ -79,14 +80,14 @@ nosResult SettingsFileManager::ReadSettingsFile(std::filesystem::path filePath, 
 		std::memcpy(json, content.c_str(), content.size() + 1); // Copy content to json
 	}
 
-	auto data = nos::GenerateBufferFromJson(NSN_MODULE_SETTINGS_TYPENAME, json);
+	auto data = nos::GenerateBufferFromJson(NSN_MODULE_SETTINGS_LIST_TYPENAME, json);
 	if (!data) {
 		nosEngine.LogE("Failed to generate buffer from JSON for nosSettingsSubsystem");
 		return NOS_RESULT_FAILED;
 	}
 
 
-	const auto& rootTable = data->As<nos::sys::settings::ModuleSettings>();
+	const auto& rootTable = data->As<nos::sys::settings::ModuleSettingsList>();
 	flatbuffers::Verifier verifier((uint8_t*)data->Data(), data->Size());
 	if (!rootTable->Verify(verifier)) {
 		nosEngine.LogW("Failed to verify the settings file: %s", filePath.c_str());
@@ -95,13 +96,17 @@ nosResult SettingsFileManager::ReadSettingsFile(std::filesystem::path filePath, 
 	}
 
 	file.Entries.clear();
-	if (rootTable->settings()) {
-		for (const auto& entry : *rootTable->settings()) {
-			file.Entries[entry->entry_name()->str()] = { entry->type_name()->str(), entry->data() };
+	if (rootTable->module_settings()) {
+		for (auto it : *rootTable->module_settings()) {
+			if (it) {
+				for (const auto& entry : *it->settings()) {
+					file.Entries[nos::Name(it->module_version()->str())][entry->entry_name()->str()] = {entry->type_name()->str(), entry->data()};
+				}
+			}
 		}
 	}
-
 	free(json);
+
 	return NOS_RESULT_SUCCESS;
 }
 
@@ -121,17 +126,22 @@ nosResult SettingsFileManager::ReadSettings(nosSettingsEntryParams* params)
 		if (readFileResult != NOS_RESULT_SUCCESS)
 			continue;
 
+		if (settings.Entries.find(module.Id.Version) == settings.Entries.end())
+			continue;
+
+		auto& entries = settings.Entries[module.Id.Version];
+
 		// TypeName, Data
 		std::pair<std::string, nos::Buffer>* entryData = nullptr;
 		if (params->EntryName == nullptr)
 		{
-			if (!settings.Entries.size())
+			if (!entries.size())
 				continue;
-			entryData = &settings.Entries.begin()->second;
+			entryData = &entries.begin()->second;
 		}
 		else {
-			auto entryIt = settings.Entries.find(params->EntryName);
-			if (entryIt == settings.Entries.end())
+			auto entryIt = entries.find(params->EntryName);
+			if (entryIt == entries.end())
 				continue;
 			entryData = &entryIt->second;
 		}
@@ -165,7 +175,7 @@ nosResult SettingsFileManager::WriteSettings(const nosSettingsEntryParams* param
 {
 	std::unique_lock lock(SettingsFilesMutex);
 	SettingsFile& settings = FindOrCreateSettingsFile(module, params->Directory);
-	auto& entry = settings.Entries[params->EntryName ? params->EntryName : DEFAULT_SETTINGS_ENTRY_NAME];
+	auto& entry = settings.Entries[module.Id.Version][params->EntryName ? params->EntryName : DEFAULT_SETTINGS_ENTRY_NAME];
 	entry.first = nos::Name(params->TypeName);
 	entry.second = params->Buffer;
 	return WriteSettingsFile(settings, module);
@@ -181,21 +191,24 @@ nosResult SettingsFileManager::WriteSettingsFile(const SettingsFile& settingsFil
 		return NOS_RESULT_FAILED;
 	}
 
-
-	nos::sys::settings::TModuleSettings moduleSettings;
-	moduleSettings.module_name = nos::Name(info.Id.Name).AsString();
-	moduleSettings.module_version = nos::Name(info.Id.Version).AsString();
-	for (auto& it : settingsFile.Entries) {
-		moduleSettings.settings.push_back(std::unique_ptr<nos::sys::settings::TSettingsEntry>(new nos::sys::settings::TSettingsEntry()));
-		auto& tEntry = moduleSettings.settings.back();
-		tEntry->data = it.second.second;
-		tEntry->entry_name = it.first;
-		tEntry->type_name = it.second.first;
+	TModuleSettingsList settingsList;
+	for (auto const& moduleVersion : settingsFile.Entries) {
+		nos::sys::settings::TModuleSettings moduleSettings;
+		moduleSettings.module_name = nos::Name(info.Id.Name).AsString();
+		moduleSettings.module_version = nos::Name(moduleVersion.first).AsString();
+		for (auto const& settingsEntries : moduleVersion.second) {
+			moduleSettings.settings.push_back(std::unique_ptr<nos::sys::settings::TSettingsEntry>(new nos::sys::settings::TSettingsEntry()));
+			auto& tEntry = moduleSettings.settings.back();
+			tEntry->data = settingsEntries.second.second;
+			tEntry->entry_name = settingsEntries.first;
+			tEntry->type_name = settingsEntries.second.first;
+		}
+		settingsList.module_settings.push_back(std::make_unique<TModuleSettings>(moduleSettings));
 	}
 
-	auto data = nos::Buffer::From(moduleSettings);
+	auto data = nos::Buffer::From(settingsList);
 
-	auto json = GenerateJsonFromBuffer(NSN_MODULE_SETTINGS_TYPENAME, data);
+	auto json = GenerateJsonFromBuffer(NSN_MODULE_SETTINGS_LIST_TYPENAME, data);
 	if (!json) {
 		nosEngine.LogE("Failed to generate JSON from buffer for nosSettingsSubsystem");
 		return NOS_RESULT_FAILED;

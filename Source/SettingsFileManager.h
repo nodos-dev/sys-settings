@@ -11,12 +11,12 @@ struct SettingsFileManager
 {
 	struct SettingsFile
 	{
-		// EntryName -> {TypeName, Buffer}
-		std::unordered_map<std::string, std::pair<std::string, nos::Buffer>> Entries;
+		// Version -> EntryName -> {TypeName, Buffer}
+		std::unordered_map<nosName, std::unordered_map<std::string, std::pair<std::string, nos::Buffer>>> Entries;
 		nosSettingsFileDirectory Directory;
 	};
 	// Each module has a settings file
-	// ModuleName-Version -> [SettingsFile]
+	// ModuleName -> [SettingsFile]
 	std::unordered_map<std::string, std::vector<SettingsFile>> SettingsFiles;
 	std::mutex SettingsFilesMutex;
 	SettingsFile& FindOrCreateSettingsFile(nosPluginInfo const& module, nosSettingsFileDirectory dir);
