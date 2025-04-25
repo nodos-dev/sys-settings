@@ -11,7 +11,7 @@ endif()
 
 set(USE_NOS_SDK_VERSION "1.3.0")
 add_compile_definitions(NOS_DISABLE_DEPRECATED)
-nos_find_plugin_sdk("38.0.0" NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
+nos_find_plugin_sdk("38.1.0" NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
 if (NOT DEFINED NOS_SDK_DIR)
     message(FATAL_ERROR "Nodos SDK with version ${USE_NOS_SDK_VERSION} not found, please either install it or choose different version")
 endif()

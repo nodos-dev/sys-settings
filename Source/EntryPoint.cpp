@@ -15,38 +15,38 @@ namespace settings = nos::sys::settings;
 namespace nos::sys::settings {
 	std::unique_ptr<SettingsFileManager> GSettingsFileManager = nullptr;
 	std::unique_ptr<SettingsEditorManager> GSettingsEditorManager = nullptr;
-	std::unordered_map<uint32_t, std::unique_ptr<nosSettingsSubsystem>> GExportedSubsystemVersions;
+	std::unordered_map<uint32_t, std::unique_ptr<nosSettingsSubsystem>> GExportedAPIVersions;
 }
 
 nosResult NOSAPI_CALL OnPreUnloadPlugin()
 {
 	settings::GSettingsFileManager = nullptr;
 	settings::GSettingsEditorManager = nullptr;
-	settings::GExportedSubsystemVersions.clear();
+	settings::GExportedAPIVersions.clear();
 	return NOS_RESULT_SUCCESS;
 }
 
 extern "C"
 {
-	nosResult OnRequest(uint32_t minor, void** outSubsystemCtx)
+	nosResult OnRequestAPI(uint32_t minor, void** outPluginAPI)
 	{
-		if (auto it = settings::GExportedSubsystemVersions.find(minor); it != settings::GExportedSubsystemVersions.end())
+		if (auto it = settings::GExportedAPIVersions.find(minor); it != settings::GExportedAPIVersions.end())
 		{
-			*outSubsystemCtx = it->second.get();
+			*outPluginAPI = it->second.get();
 			return NOS_RESULT_SUCCESS;
 		}
-		nosSettingsSubsystem& subsystem = *(settings::GExportedSubsystemVersions[minor] = std::make_unique<nosSettingsSubsystem>());
+		nosSettingsSubsystem& subsystem = *(settings::GExportedAPIVersions[minor] = std::make_unique<nosSettingsSubsystem>());
 		subsystem.ReadSettingsEntry = [](nosSettingsEntryParams* params) -> nosResult { return settings::GSettingsFileManager->ReadSettings(params); };
 		subsystem.WriteSettingsEntry = [](const nosSettingsEntryParams* params) -> nosResult { return settings::GSettingsFileManager->WriteSettings(params); };
 		subsystem.RegisterEditorSettings = [](u64 itemCount, const nosSettingsEditorItem** list, nosPfnSettingsItemUpdate itemUpdateCallback, nosSettingsFileDirectory saveDirectory) { return settings::GSettingsEditorManager->RegisterEditorSettings(itemCount, list, itemUpdateCallback, saveDirectory); };
 		subsystem.UnregisterEditorSettings = []() -> nosResult { return settings::GSettingsEditorManager->UnregisterEditorSettings(); };
-		*outSubsystemCtx = &subsystem;
+		*outPluginAPI = &subsystem;
 		return NOS_RESULT_SUCCESS;
 	}
 
 	NOSAPI_ATTR nosResult NOSAPI_CALL nosExportPlugin(nosPluginFunctions* pluginFunctions)
 	{
-		pluginFunctions->OnRequest = OnRequest;
+		pluginFunctions->OnRequestAPI = OnRequestAPI;
 		pluginFunctions->OnPreUnloadPlugin = OnPreUnloadPlugin;
 		pluginFunctions->OnEditorConnected = [](uint64_t editorId) {settings::GSettingsEditorManager->OnEditorConnected(editorId); };
 		pluginFunctions->OnMessageFromEditor = [](uint64_t editorId, nosBuffer message) { settings::GSettingsEditorManager->OnMessageFromEditor(editorId, message); };

@@ -11,5 +11,5 @@ struct SettingsFileManager;
 struct SettingsEditorManager;
 extern std::unique_ptr<SettingsFileManager> GSettingsFileManager;
 extern std::unique_ptr<SettingsEditorManager> GSettingsEditorManager;
-extern std::unordered_map<uint32_t, std::unique_ptr<nosSettingsSubsystem>> GExportedSubsystemVersions;
+extern std::unordered_map<uint32_t, std::unique_ptr<nosSettingsSubsystem>> GExportedAPIVersions;
 }
