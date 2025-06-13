@@ -6,42 +6,43 @@
 #define NOS_SETTINGS_SUBSYSTEM_H_INCLUDED
 #include "Nodos/Types.h"
 
-typedef enum nosSettingsFileDirectory {
-	NOS_SETTINGS_FILE_DIRECTORY_LOCAL, // Module's root folder
-	NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE, // Engine's config folder
-	NOS_SETTINGS_FILE_DIRECTORY_GLOBAL	// AppData folder
-} nosSettingsFileDirectory;
-
-typedef enum nosSettingsEntryType {
-	NOS_SETTINGS_ENTRY_TYPE_MODULE, // Module's settings
-	NOS_SETTINGS_ENTRY_TYPE_DEVICE // Device's settings
-} nosSettingsEntryType;
-
+// NOS_RESULT_SUCCESS: Item value will be serialized to the WriteDirectories
+// NOS_RESULT_FAIL: Default item value will be serialized to the WriteDirectories
 typedef nosResult(*nosPfnSettingsEntryUpdate)(const char* entryName, nosBuffer itemValue);
 typedef uint64_t nosSettingsEntryId;
 
 #if NOS_HAS_CPLUSPLUS_20
-typedef nos::fb::Visualizer nosSettingsEditorVisualizer;
+typedef nos::fb::Visualizer* nosSettingsEditorVisualizer;
 #else
 typedef void* nosSettingsEditorVisualizer;
 #endif
 
+typedef enum nosSettingsFileDirectory {
+	NOS_SETTINGS_FILE_DIRECTORY_LOCAL = 1 << 0, // Module's root folder
+	NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE = 1 << 1, // Engine's config folder
+	NOS_SETTINGS_FILE_DIRECTORY_GLOBAL = 1 << 2	// AppData folder
+} nosSettingsFileDirectory;
+
+typedef uint32_t nosSettingsFileDirectoryFlag;
+
 typedef struct nosSettingsEntryParams {
 	nosName TypeName;
-	nosBuffer Buffer; // Don't forget to free this buffer
+	// Default value of the buffer
+	// If nosPfnSettingsEntryUpdate callback returns NOS_SETTINGS_ENTRY_NON_COMPATIBLE, this will be saved
+	// Don't forget to free this buffer
+	nosBuffer Buffer;
 	const char* EntryName; // If NULL, "default" will be used
-	nosSettingsFileDirectory Directory;
+	nosSettingsFileDirectoryFlag WriteDirectories; // Directory flags to determine where this entry will be stored
 	nosPfnSettingsEntryUpdate UpdateCallback; // Callback to update the entry value
-	nosSettingsEntryType Type; // Type of the entry
 	bool IsEditableFromEditor; // If true, this entry will be editable from editor
 	nosSettingsEditorVisualizer Visualizer; // Visualizer for the entry in editor
+	// Target module name, editor can decide where to place this entry
+	// For example, if this is "nos.sys.device", editor can place this entry under "Devices" section
+	nosName TargetName;
 } nosSettingsEntryParams;
 
 typedef struct nosSettingsSubsystem
 {
-	// parameters->directory will be set to found directory
-	// if parameters->typeName == 0, it will be set to first typename found in the closest file
-	// parameters->directory is ignored because closest one is chosen
 	nosResult(NOSAPI_CALL *RegisterSettingsEntry)(nosSettingsEntryParams* parameters, nosSettingsEntryId* entryId);
 	void(NOSAPI_CALL* UnregisterSettingsEntry)(nosSettingsEntryId entryId);
 } nosSettingsSubsystem;

@@ -26,6 +26,14 @@ nosResult NOSAPI_CALL OnPreUnloadPlugin()
 	return NOS_RESULT_SUCCESS;
 }
 
+nosResult RegisterSettingsEntry(nosSettingsEntryParams* parameters, nosSettingsEntryId* entryId) {
+	settings::GSettingsFileManager->ReadSettings
+}
+
+void UnregisterSettingsEntry(nosSettingsEntryId entryId) {
+
+}
+
 extern "C"
 {
 	nosResult OnRequestAPI(uint32_t minor, void** outPluginAPI)
