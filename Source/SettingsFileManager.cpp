@@ -120,9 +120,9 @@ nosResult EntryManager::ReadSettingsFile(std::filesystem::path filePath, ReadEnt
 	return NOS_RESULT_SUCCESS;
 }
 
-nosResult EntryManager::WriteSettingsFile(std::filesystem::path filePath, const ReadEntryList& entries) const
+nosResult EntryManager::WriteSettingsFile(nos::Name pluginName, util::SemVer pluginVer, nosSettingsFileDirectory dir, const ReadEntryList& entries) const
 {
-	std::ofstream file(filePath);
+	std::ofstream file(GetFilePathFromEntry(pluginName, pluginVer, dir));
 	flatbuffers::FlatBufferBuilder builder;
 
 	if (!file || !file.is_open()) {
@@ -131,8 +131,10 @@ nosResult EntryManager::WriteSettingsFile(std::filesystem::path filePath, const 
 	}
 
 	TSettingsList settingsList;
-	for (auto const& [entryName, mluginVerAndEntryVal] : entries.Entries) {
-		for(auto const& [mluginVer, entryVal] : mluginVerAndEntryVal) {
+	for (auto const& [entryName, pluginVerAndEntryVal] : entries.Entries) {
+		for(auto const& [entryVer, entryVal] : pluginVerAndEntryVal) {
+			if (entryVer != pluginVer)
+				continue;
 			settingsList.settings.push_back(std::make_unique<nos::sys::settings::TSettingsEntry>());
 			auto& tEntry = settingsList.settings.back();
 			tEntry->entry_name = entryName.AsString();
@@ -205,16 +207,16 @@ nosResult EntryManager::UpdateEntry(nos::Name pluginName, nos::util::SemVer plug
 			auto const& entryVer = entriesFromDifVersions[i].first;
 			if(entryVer == pluginVersion) {
 				entriesFromDifVersions[i].second = entryVal;
-				return WriteSettingsFile(GetFilePathFromEntry(pluginName, entriesFromDifVersions[i].first, dir), entryList);
+				return WriteSettingsFile(pluginName, entriesFromDifVersions[i].first, dir, entryList);
 			}
 			if(entryVer > pluginVersion) {
 				// If the version is greater, we can insert before it
 				entriesFromDifVersions.insert(entriesFromDifVersions.begin() + i, {pluginVersion, entryVal});
-				return WriteSettingsFile(GetFilePathFromEntry(pluginName, entriesFromDifVersions[i].first, dir), entryList);
+				return WriteSettingsFile(pluginName, entriesFromDifVersions[i].first, dir, entryList);
 			}
 		}
 		entriesFromDifVersions.push_back({ pluginVersion, entryVal }); // If we reach here, we can just append
-		return WriteSettingsFile(GetFilePathFromEntry(pluginName, entriesFromDifVersions.back().first, dir), entryList);
+		return WriteSettingsFile(pluginName, entriesFromDifVersions.back().first, dir, entryList);
 	};
 
 	if(directories & NOS_SETTINGS_FILE_DIRECTORY_LOCAL) {

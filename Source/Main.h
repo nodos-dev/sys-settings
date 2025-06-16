@@ -47,7 +47,7 @@ struct EntryManager
 	// PluginName -> EntryList
 	std::unordered_map<nos::Name, ReadEntryList> GlobalEntries, WorkspaceEntries, LocalEntries;
 	nosResult ReadSettingsFile(std::filesystem::path filePath, ReadEntryList& readEntries);
-	nosResult WriteSettingsFile(std::filesystem::path filePath, const ReadEntryList& entries) const;
+	nosResult WriteSettingsFile(nos::Name pluginName, util::SemVer pluginVer, nosSettingsFileDirectory dir, const ReadEntryList& entries) const;
 	// Gets the closest entry and set the entry's plugin version as it
 	nosResult TryToGetClosestFittingEntry(nos::Name pluginName, nos::Name entryName, RegisteredEntry& entry);
 	// If there is a matching entry with the same plugin version, updates it
