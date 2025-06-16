@@ -87,6 +87,8 @@ void OnMessageFromEditor(uint64_t editorId, nosBuffer message)
 	auto& entry = entryIt->second;
 	auto val = nos::Buffer(msg->entry()->data());
 	auto ret = entry.UpdateCallback(nos::Name(entryName), *val.GetInternal());
+	if (entry.ReadEntryPluginVer == util::SemVer{}) 
+		entry.ReadEntryPluginVer = util::SemVer::ParseFrom(nos::Name(GSettingsEntryManager->PluginVersions[nos::Name(pluginName)].second.Id.Version).AsCStr());
 	if (ret == NOS_RESULT_SUCCESS)
 		GSettingsEntryManager->UpdateEntry(nos::Name(pluginName), entry.ReadEntryPluginVer, entry.SaveFlag, nos::Name(entryName), { entry.TypeName, val });
 	else
