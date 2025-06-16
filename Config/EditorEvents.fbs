@@ -13,7 +13,7 @@ attribute "resource";
 attribute "strict_type";
 
 table SettingsUpdateFromEditor{
-	module_name: string;
+	plugin_name: string;
 	entry: nos.sys.settings.SettingsEntry;
 }
 
@@ -26,6 +26,6 @@ table SettingsEditorItem{
 
 // List of items to be displayed in the editor
 table SettingsUpdateFromSubsystem{
-	module_name: string;
+	plugin_name: string;
 	settings: [SettingsEditorItem];
 }

@@ -8,7 +8,7 @@
 
 // NOS_RESULT_SUCCESS: Item value will be serialized to the WriteDirectories
 // NOS_RESULT_FAIL: Default item value will be serialized to the WriteDirectories
-typedef nosResult(*nosPfnSettingsEntryUpdate)(const char* entryName, nosBuffer itemValue);
+typedef nosResult(*nosPfnSettingsEntryUpdate)(nosName entryName, nosBuffer itemValue);
 typedef uint64_t nosSettingsEntryId;
 
 #if NOS_HAS_CPLUSPLUS_20
@@ -30,12 +30,13 @@ typedef struct nosSettingsEntryParams {
 	// Default value of the buffer
 	// If nosPfnSettingsEntryUpdate callback returns NOS_SETTINGS_ENTRY_NON_COMPATIBLE, this will be saved
 	// Don't forget to free this buffer
-	nosBuffer Buffer;
-	const char* EntryName; // If NULL, "default" will be used
+	const nosBuffer* Buffer;
+	nosName EntryName; // If NULL, "default" will be used
 	nosSettingsFileDirectoryFlag WriteDirectories; // Directory flags to determine where this entry will be stored
 	nosPfnSettingsEntryUpdate UpdateCallback; // Callback to update the entry value
 	bool IsEditableFromEditor; // If true, this entry will be editable from editor
 	nosSettingsEditorVisualizer Visualizer; // Visualizer for the entry in editor
+	nosName DisplayName;
 	// Target module name, editor can decide where to place this entry
 	// For example, if this is "nos.sys.device", editor can place this entry under "Devices" section
 	nosName TargetName;
@@ -43,8 +44,10 @@ typedef struct nosSettingsEntryParams {
 
 typedef struct nosSettingsSubsystem
 {
-	nosResult(NOSAPI_CALL *RegisterSettingsEntry)(nosSettingsEntryParams* parameters, nosSettingsEntryId* entryId);
-	void(NOSAPI_CALL* UnregisterSettingsEntry)(nosSettingsEntryId entryId);
+	nosResult(NOSAPI_CALL *RegisterEntry)(nosSettingsEntryParams* parameters);
+	nosResult(NOSAPI_CALL* UpdateEntryValue)(nosName entryName, nosBuffer value);
+	// An entry can only be unregistered by the plugin it's registered from
+	void(NOSAPI_CALL* UnregisterEntry)(nosName entryName);
 } nosSettingsSubsystem;
 
 #pragma region Helper Declarations & Macros

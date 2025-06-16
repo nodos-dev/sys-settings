@@ -5,7 +5,7 @@
 #include <nosSettingsSubsystem/EditorEvents_generated.h>
 #include <unordered_map>
 #include <Nodos/Helpers.hpp>
-#include "SettingsFileManager.h"
+#include "Main.h"
 #include "Globals.h"
 
 namespace nos::sys::settings {
@@ -13,11 +13,27 @@ NOS_REGISTER_NAME_SPACED(SETTINGS_ENTRY_TYPENAME, nos::sys::settings::SettingsEn
 NOS_REGISTER_NAME_SPACED(SETTINGS_LIST_TYPENAME, nos::sys::settings::SettingsList::GetFullyQualifiedName());
 static constexpr char DEFAULT_SETTINGS_ENTRY_NAME[] = "default";
 
-static constexpr nosSettingsFileDirectory DIRECTORIES_CLOSEST_TO_FARTHEST[] = {
-	NOS_SETTINGS_FILE_DIRECTORY_LOCAL,
-	NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE,
-	NOS_SETTINGS_FILE_DIRECTORY_GLOBAL
-};
+std::filesystem::path GetFilePathFromEntry(nos::Name pluginName, util::SemVer pluginVer, nosSettingsFileDirectory dir) {
+	auto fileName = pluginName.AsString() + "-" + std::string(pluginVer) + ".json";
+	switch (dir)
+	{
+	case NOS_SETTINGS_FILE_DIRECTORY_LOCAL:
+	{
+		return std::filesystem::path(GSettingsEntryManager->PluginVersions[pluginName].second.RootFolderPath) / fileName;
+	}
+	case NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE:
+	{
+		return std::filesystem::path(nosEngine.GetEnginePath(NOS_ENGINE_PATH_CONFIG)) / fileName;
+	}
+	case NOS_SETTINGS_FILE_DIRECTORY_GLOBAL:
+	{
+		return std::filesystem::path(nosEngine.GetEnginePath(NOS_ENGINE_PATH_APPDATA)) / fileName;
+	}
+	default:
+		nosEngine.LogE("The file location requested is not supported by nosSettingsSubsystem.");
+		return std::filesystem::path();
+	}
+}
 
 std::string GetPluginSettingsFileName(nosPluginInfo const& Plugin)
 {
@@ -53,31 +69,7 @@ nos::util::SemVer GetPluginVersionFromName(std::string const& pluginName)
 	return nos::util::SemVer::ParseFrom(parts[1]);
 }
 
-std::filesystem::path SettingsFileManager::GetSettingsFilePath(nosSettingsFileDirectory dir, nos::Name pluginName) const
-{
-	auto const& pluginInfo = PluginVersions[pluginName];
-	auto fileName = GetPluginSettingsFileName(pluginInfo) + ".json";
-	switch (dir)
-	{
-	case NOS_SETTINGS_FILE_DIRECTORY_LOCAL:
-	{
-		return std::filesystem::path(pluginInfo.RootFolderPath) / fileName;
-	}
-	case NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE:
-	{
-		return std::filesystem::path(nosEngine.GetEnginePath(NOS_ENGINE_PATH_CONFIG)) / fileName;
-	}
-	case NOS_SETTINGS_FILE_DIRECTORY_GLOBAL:
-	{
-		return std::filesystem::path(nosEngine.GetEnginePath(NOS_ENGINE_PATH_APPDATA)) / fileName;
-	}
-	default:
-		nosEngine.LogE("The file location requested is not supported by nosSettingsSubsystem.");
-		return std::filesystem::path();
-	}
-} 
-
-nosResult SettingsFileManager::ReadSettingsFile(std::filesystem::path filePath, ReadEntryList& readEntries)
+nosResult EntryManager::ReadSettingsFile(std::filesystem::path filePath, ReadEntryList& readEntries)
 {
 	char* json = nullptr;
 	// Read to JSON
@@ -110,6 +102,7 @@ nosResult SettingsFileManager::ReadSettingsFile(std::filesystem::path filePath, 
 		return NOS_RESULT_FAILED;
 	}
 
+	std::unique_lock lock(readEntries.FileMutex);
 	readEntries.Entries.clear();
 	if (!rootTable->settings())
 		return NOS_RESULT_SUCCESS;
@@ -127,7 +120,7 @@ nosResult SettingsFileManager::ReadSettingsFile(std::filesystem::path filePath, 
 	return NOS_RESULT_SUCCESS;
 }
 
-nosResult SettingsFileManager::WriteSettingsFile(std::filesystem::path filePath, const ReadEntryList& entries) const
+nosResult EntryManager::WriteSettingsFile(std::filesystem::path filePath, const ReadEntryList& entries) const
 {
 	std::ofstream file(filePath);
 	flatbuffers::FlatBufferBuilder builder;
@@ -161,7 +154,7 @@ nosResult SettingsFileManager::WriteSettingsFile(std::filesystem::path filePath,
 	return NOS_RESULT_SUCCESS;
 };
 
-nosResult SettingsFileManager::TryToGetClosestFittingEntry(nos::Name pluginName, nos::Name entryName, RegisteredEntry& entry) {
+nosResult EntryManager::TryToGetClosestFittingEntry(nos::Name pluginName, nos::Name entryName, RegisteredEntry& entry) {
 	auto const& requestedPluginVer = PluginVersions[pluginName].first;
 	nos::util::SemVer entryVer;
 	EntryTypeNameBufferPair entryVal;
@@ -174,9 +167,10 @@ nosResult SettingsFileManager::TryToGetClosestFittingEntry(nos::Name pluginName,
 					continue;
 
 				if (pluginVer <= requestedPluginVer) {
-					result = entry.UpdateCallback(entryName.AsCStr(), entryValPair.second);
+					result = entry.UpdateCallback(entryName, entryValPair.second);
 					entryVer = pluginVer;
 					entryVal = entryValPair;
+					entry.ReadEntryPluginVer = entryVer;
 					break;
 				}
 			}
@@ -186,6 +180,7 @@ nosResult SettingsFileManager::TryToGetClosestFittingEntry(nos::Name pluginName,
 		}
 		return NOS_RESULT_FAILED;
 	};
+
 	if (auto localFile = LocalEntries.find(pluginName); localFile != LocalEntries.end()) {
 		if(searchDirectory(localFile->second) == NOS_RESULT_SUCCESS)
 			return NOS_RESULT_SUCCESS;
@@ -201,7 +196,8 @@ nosResult SettingsFileManager::TryToGetClosestFittingEntry(nos::Name pluginName,
 	return NOS_RESULT_FAILED;
 }
 
-nosResult SettingsFileManager::UpdateEntry(nos::Name pluginName, nos::util::SemVer pluginVersion, nosSettingsFileDirectoryFlag directories, nos::Name entryName, EntryTypeNameBufferPair entryVal) {
+
+nosResult EntryManager::UpdateEntry(nos::Name pluginName, nos::util::SemVer pluginVersion, nosSettingsFileDirectoryFlag directories, nos::Name entryName, EntryTypeNameBufferPair entryVal) {
 	auto addOrUpdateEntry = [&](ReadEntryList& entryList, nosSettingsFileDirectory dir) {
 		std::unique_lock<std::shared_mutex>(entryList.FileMutex); // Lock the mutex to ensure thread safety
 		auto& entriesFromDifVersions = entryList.Entries[entryName];
@@ -209,17 +205,18 @@ nosResult SettingsFileManager::UpdateEntry(nos::Name pluginName, nos::util::SemV
 			auto const& entryVer = entriesFromDifVersions[i].first;
 			if(entryVer == pluginVersion) {
 				entriesFromDifVersions[i].second = entryVal;
-				return WriteSettingsFile(GetSettingsFilePath(dir, pluginName), entryList);
+				return WriteSettingsFile(GetFilePathFromEntry(pluginName, entriesFromDifVersions[i].first, dir), entryList);
 			}
 			if(entryVer > pluginVersion) {
 				// If the version is greater, we can insert before it
 				entriesFromDifVersions.insert(entriesFromDifVersions.begin() + i, {pluginVersion, entryVal});
-				return WriteSettingsFile(GetSettingsFilePath(dir, pluginName), entryList);
+				return WriteSettingsFile(GetFilePathFromEntry(pluginName, entriesFromDifVersions[i].first, dir), entryList);
 			}
 		}
 		entriesFromDifVersions.push_back({ pluginVersion, entryVal }); // If we reach here, we can just append
-		return WriteSettingsFile(GetSettingsFilePath(dir, pluginName), entryList);
+		return WriteSettingsFile(GetFilePathFromEntry(pluginName, entriesFromDifVersions.back().first, dir), entryList);
 	};
+
 	if(directories & NOS_SETTINGS_FILE_DIRECTORY_LOCAL) {
 		return addOrUpdateEntry(LocalEntries[pluginName], NOS_SETTINGS_FILE_DIRECTORY_LOCAL);
 	}
