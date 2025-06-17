@@ -162,10 +162,8 @@ nosResult RegisterEntry(nosSettingsEntryParams* params) {
 	if (params->Visualizer)
 		params->Visualizer->UnPackTo(&entry.Visualizer);
 
-	if (entryManager->TryToGetClosestFittingEntry(pluginInfo.Id.Name, nos::Name(params->EntryName), entry) != NOS_RESULT_SUCCESS) {
-		nosEngine.LogE("Failed to get closest fitting entry for settings registration.");
-		return NOS_RESULT_FAILED;
-	}
+	entryManager->TryToGetClosestFittingEntry(pluginInfo.Id.Name, nos::Name(params->EntryName), entry);
+	UpdateEditorEntriesForPlugin(pluginInfo.Id.Name);
 
 	return NOS_RESULT_SUCCESS;
 }
