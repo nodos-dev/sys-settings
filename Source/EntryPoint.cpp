@@ -28,11 +28,12 @@ nos::Buffer GenerateEditorItemsForPlugin(nos::Name pluginName, const std::unorde
 		item->entry->type_name = entry.TypeName;
 		item->entry->entry_name = entryName;
 		item->entry->data = entry.LastValue;
+		item->entry->target_name = entry.TargetName;
 	}
 	return nos::Buffer::From(list);
 }
 
-nosResult RegisterEditorSettings(nos::Name pluginName)
+nosResult UpdateEditorEntriesForPlugin(nos::Name pluginName)
 {
 	auto buf = GenerateEditorItemsForPlugin(pluginName, GSettingsEntryManager->RegisteredEntries[pluginName]);
 	nosSendEditorMessageParams params{ .Message = buf,

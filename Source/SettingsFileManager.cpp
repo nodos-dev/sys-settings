@@ -201,22 +201,38 @@ nosResult EntryManager::TryToGetClosestFittingEntry(nos::Name pluginName, nos::N
 
 nosResult EntryManager::UpdateEntry(nos::Name pluginName, nos::util::SemVer pluginVersion, nosSettingsFileDirectoryFlag directories, nos::Name entryName, EntryTypeNameBufferPair entryVal) {
 	auto addOrUpdateEntry = [&](ReadEntryList& entryList, nosSettingsFileDirectory dir) {
+		auto updateEntry = [&](nos::util::SemVer entrySemVer) -> nosResult {
+			auto res = WriteSettingsFile(pluginName, entrySemVer, dir, entryList);
+			if(res != NOS_RESULT_SUCCESS) {
+				nosEngine.LogE("Failed to write settings file for plugin %s with version %s", pluginName.AsString().c_str(), std::string(pluginVersion).c_str());
+				return res;
+			}
+			// Update editor if the entry is registered
+			if (auto pluginEntries = GSettingsEntryManager->RegisteredEntries.find(pluginName); pluginEntries != GSettingsEntryManager->RegisteredEntries.end())
+				if (auto entry = pluginEntries->second.find(entryName); entry != pluginEntries->second.end())
+					entry->second.LastValue = entryVal.second;
+					return UpdateEditorEntriesForPlugin(pluginName);
+
+			};
+
 		std::unique_lock<std::shared_mutex>(entryList.FileMutex); // Lock the mutex to ensure thread safety
 		auto& entriesFromDifVersions = entryList.Entries[entryName];
+
 		for (size_t i = 0; i < entriesFromDifVersions.size(); i++) {
 			auto const& entryVer = entriesFromDifVersions[i].first;
 			if(entryVer == pluginVersion) {
 				entriesFromDifVersions[i].second = entryVal;
-				return WriteSettingsFile(pluginName, entriesFromDifVersions[i].first, dir, entryList);
+				return updateEntry(entriesFromDifVersions[i].first);
 			}
 			if(entryVer > pluginVersion) {
 				// If the version is greater, we can insert before it
 				entriesFromDifVersions.insert(entriesFromDifVersions.begin() + i, {pluginVersion, entryVal});
-				return WriteSettingsFile(pluginName, entriesFromDifVersions[i].first, dir, entryList);
+				return updateEntry(entriesFromDifVersions[i].first);
 			}
 		}
+
 		entriesFromDifVersions.push_back({ pluginVersion, entryVal }); // If we reach here, we can just append
-		return WriteSettingsFile(pluginName, entriesFromDifVersions.back().first, dir, entryList);
+		return updateEntry(entriesFromDifVersions.back().first);
 	};
 
 	if(directories & NOS_SETTINGS_FILE_DIRECTORY_LOCAL) {

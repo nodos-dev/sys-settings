@@ -32,6 +32,7 @@ struct ReadEntryList
 	std::unordered_map<nos::Name, std::vector<std::pair<nos::util::SemVer, EntryTypeNameBufferPair>>> Entries;
 };
 
+nosResult UpdateEditorEntriesForPlugin(nos::Name pluginName);
 nosResult UnregisterEditorSettings(nos::Name moduleName);
 void OnEditorConnected(uint64_t editorId);
 void OnMessageFromEditor(uint64_t editorId, nosBuffer message);
