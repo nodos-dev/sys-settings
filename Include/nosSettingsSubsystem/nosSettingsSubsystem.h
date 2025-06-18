@@ -86,7 +86,6 @@ namespace nos::sys::settings {
 			params.Buffer = &(*defaultVal);
 		
 		params.WriteDirectories = writeDirectories;
-		params.UpdateCallback = nullptr; // No update callback for C++20 version
 		params.IsEditableFromEditor = editableFromEditor;
 
 		if (targetName.has_value())
