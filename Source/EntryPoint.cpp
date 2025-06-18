@@ -202,10 +202,6 @@ nosResult UpdateEntryValue(nosName entryName, nosBuffer value) {
 
 	entry->second.LastValue = value;
 	GSettingsEntryManager->UpdateEntry(pluginName, entry->second.ReadEntryPluginVer, entry->second.SaveFlag, entryName, { entry->second.TypeName, value });
-	auto buf = GenerateEditorItemsForPlugin(pluginName, GSettingsEntryManager->RegisteredEntries[pluginName]);
-	nosSendEditorMessageParams params{ .Message = buf,
-										.DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_BROADCAST };
-	nosEngine.SendEditorMessage(&params);
 }
 }
 
