@@ -201,7 +201,7 @@ nosResult UpdateEntryValue(nosName entryName, nosBuffer value) {
 		return NOS_RESULT_NOT_FOUND;
 
 	entry->second.LastValue = value;
-	GSettingsEntryManager->UpdateEntry(pluginName, entry->second.ReadEntryPluginVer, entry->second.SaveFlag, entryName, { entry->second.TypeName, value });
+	return GSettingsEntryManager->UpdateEntry(pluginName, entry->second.ReadEntryPluginVer, entry->second.SaveFlag, entryName, { entry->second.TypeName, value });
 }
 }
 

@@ -161,7 +161,7 @@ nosResult EntryManager::TryToGetClosestFittingEntry(nos::Name pluginName, nos::N
 	nos::util::SemVer entryVer;
 	EntryTypeNameBufferPair entryVal;
 	auto searchDirectory = [&](ReadEntryList& entryList) {
-		std::shared_lock<std::shared_mutex>(entryList.FileMutex); // Lock the mutex to ensure thread safety
+		std::shared_lock<std::shared_mutex> lock(entryList.FileMutex); // Lock the mutex to ensure thread safety
 		if (auto const& entriesFromDifVersions = entryList.Entries.find(entryName); entriesFromDifVersions != entryList.Entries.end()) {
 			nosResult result = NOS_RESULT_NOT_FOUND;
 			for (auto const& [pluginVer, entryValPair] : entriesFromDifVersions->second | std::views::reverse) {
@@ -212,10 +212,9 @@ nosResult EntryManager::UpdateEntry(nos::Name pluginName, nos::util::SemVer plug
 				if (auto entry = pluginEntries->second.find(entryName); entry != pluginEntries->second.end())
 					entry->second.LastValue = entryVal.second;
 					return UpdateEditorEntriesForPlugin(pluginName);
-
 			};
 
-		std::unique_lock<std::shared_mutex>(entryList.FileMutex); // Lock the mutex to ensure thread safety
+		std::unique_lock<std::shared_mutex> lock(entryList.FileMutex); // Lock the mutex to ensure thread safety
 		auto& entriesFromDifVersions = entryList.Entries[entryName];
 
 		for (size_t i = 0; i < entriesFromDifVersions.size(); i++) {

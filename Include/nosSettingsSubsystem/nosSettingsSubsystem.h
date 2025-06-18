@@ -68,9 +68,10 @@ extern nosSettingsSubsystem* nosSettings;
 
 #if NOS_HAS_CPLUSPLUS_20
 #include "Types_generated.h"
+#include <Nodos/Name.hpp>
 
 namespace nos::sys::settings {
-	nosResult RegisterEntry(std::string const& entryName, std::string const& typeName, nosPfnSettingsEntryUpdate updateCallback, std::optional<nosBuffer> defaultVal = std::nullopt, nosSettingsFileDirectoryFlag writeDirectories = NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE, bool editableFromEditor = true, std::optional<std::string> displayName = std::nullopt, std::optional<std::string> targetName = std::nullopt, std::optional<nos::fb::TVisualizer> visualizer = std::nullopt) {
+	inline nosResult RegisterEntry(std::string const& entryName, std::string const& typeName, nosPfnSettingsEntryUpdate updateCallback, std::optional<nosBuffer> defaultVal = std::nullopt, nosSettingsFileDirectoryFlag writeDirectories = NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE, bool editableFromEditor = true, std::optional<std::string> displayName = std::nullopt, std::optional<std::string> targetName = std::nullopt, std::optional<nos::fb::TVisualizer> visualizer = std::nullopt) {
 		nosSettingsEntryParams params{};
 		params.EntryName = nos::Name(entryName);
 		params.TypeName = nos::Name(typeName);
@@ -100,7 +101,7 @@ namespace nos::sys::settings {
 		return nosSettings->RegisterEntry(&params);
 	}
 
-	void UnregisterEntry(std::string const& entryName) {
+	inline void UnregisterEntry(std::string const& entryName) {
 		nosSettings->UnregisterEntry(nos::Name(entryName));
 	}
 }
