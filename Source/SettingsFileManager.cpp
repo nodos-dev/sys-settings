@@ -214,7 +214,6 @@ nosResult EntryManager::UpdateEntry(nos::Name pluginName, nos::util::SemVer plug
 					return UpdateEditorEntriesForPlugin(pluginName);
 			};
 
-		std::unique_lock<std::shared_mutex> lock(entryList.FileMutex); // Lock the mutex to ensure thread safety
 		auto& entriesFromDifVersions = entryList.Entries[entryName];
 
 		for (size_t i = 0; i < entriesFromDifVersions.size(); i++) {

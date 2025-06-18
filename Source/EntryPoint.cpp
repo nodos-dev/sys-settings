@@ -121,7 +121,6 @@ void RegisterPlugin(const nosPluginInfo& pluginInfo) {
 	auto pluginName = nos::Name(pluginInfo.Id.Name);
 	auto readAllFilesInDir = [&pluginInfo, &pluginName](std::filesystem::path const& dir, ReadEntryList& entryList) {
 		auto workspaceFiles = GetFilesWithPrefix(dir, pluginName.AsCStr());
-		std::unique_lock lock(entryList.FileMutex);
 		for (auto& file : workspaceFiles) {
 			ReadEntryList readList;
 			GSettingsEntryManager->ReadSettingsFile(file, readList);
