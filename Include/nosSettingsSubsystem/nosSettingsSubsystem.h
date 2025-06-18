@@ -66,6 +66,46 @@ extern nosSettingsSubsystem* nosSettings;
 
 #define NOS_SETTINGS_IMPORT() NOS_IMPORT_DEP(NOS_SETTINGS_SUBSYSTEM_NAME, nosSettingsModuleInfo, nosSettings)
 
+#if NOS_HAS_CPLUSPLUS_20
+#include "Types_generated.h"
+
+namespace nos::sys::settings {
+	nosResult RegisterEntry(std::string const& entryName, std::string const& typeName, nosPfnSettingsEntryUpdate updateCallback, std::optional<nosBuffer> defaultVal = std::nullopt, nosSettingsFileDirectoryFlag writeDirectories = NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE, bool editableFromEditor = true, std::optional<std::string> displayName = std::nullopt, std::optional<std::string> targetName = std::nullopt, std::optional<nos::fb::TVisualizer> visualizer = std::nullopt) {
+		nosSettingsEntryParams params{};
+		params.EntryName = nos::Name(entryName);
+		params.TypeName = nos::Name(typeName);
+		params.UpdateCallback = updateCallback;
+
+		if (displayName.has_value())
+			params.DisplayName = nos::Name(*displayName);
+		else 
+			params.DisplayName = params.EntryName;
+		
+		if (defaultVal.has_value())
+			params.Buffer = &(*defaultVal);
+		
+		params.WriteDirectories = writeDirectories;
+		params.UpdateCallback = nullptr; // No update callback for C++20 version
+		params.IsEditableFromEditor = editableFromEditor;
+
+		if (targetName.has_value())
+			params.TargetName = nos::Name(*targetName);
+		
+		nos::Buffer visualizerBuf;
+		if (visualizer.has_value()) {
+			visualizerBuf = nos::Buffer::From(*visualizer);
+			params.Visualizer = visualizerBuf.As<nos::fb::Visualizer>();
+		}
+
+		return nosSettings->RegisterEntry(&params);
+	}
+
+	void UnregisterEntry(std::string const& entryName) {
+		nosSettings->UnregisterEntry(nos::Name(entryName));
+	}
+}
+#endif // NOS_HAS_CPLUSPLUS_20
+
 #pragma endregion
 
 
