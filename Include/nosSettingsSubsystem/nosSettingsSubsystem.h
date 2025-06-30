@@ -30,7 +30,7 @@ typedef struct nosSettingsEntryParams {
 	// Default value of the buffer
 	// If nosPfnSettingsEntryUpdate callback returns NOS_SETTINGS_ENTRY_NON_COMPATIBLE, this will be saved
 	// Don't forget to free this buffer
-	const nosBuffer* Buffer;
+	nosBuffer DefaultValueBuffer;
 	nosName EntryName; // If NULL, "default" will be used
 	nosSettingsFileDirectoryFlag WriteDirectories; // Directory flags to determine where this entry will be stored
 	nosPfnSettingsEntryUpdate UpdateCallback; // Callback to update the entry value
@@ -83,7 +83,7 @@ namespace nos::sys::settings {
 			params.DisplayName = params.EntryName;
 		
 		if (defaultVal.has_value())
-			params.Buffer = &(*defaultVal);
+			params.DefaultValueBuffer = *defaultVal;
 		
 		params.WriteDirectories = writeDirectories;
 		params.IsEditableFromEditor = editableFromEditor;

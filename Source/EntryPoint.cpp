@@ -150,8 +150,8 @@ nosResult RegisterEntry(nosSettingsEntryParams* params) {
 	auto& entryManager = settings::GSettingsEntryManager;
 	std::unique_lock lock(entryManager->RegisteredEntriesMutex);
 	auto& entry = entryManager->RegisteredEntries[pluginInfo.Id.Name][nos::Name(params->EntryName)];
-	if (params->Buffer)
-		entry.LastValue = *params->Buffer;
+	if (params->DefaultValueBuffer.Data)
+		entry.LastValue = params->DefaultValueBuffer;
 	entry.IsEditableFromEditor = params->IsEditableFromEditor;
 	entry.SaveFlag = params->WriteDirectories;
 	entry.TargetName = params->TargetName;
