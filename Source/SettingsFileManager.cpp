@@ -156,7 +156,7 @@ nosResult EntryManager::WriteSettingsFile(nos::Name pluginName, util::SemVer plu
 	return NOS_RESULT_SUCCESS;
 };
 
-nosResult EntryManager::TryToGetClosestFittingEntry(nos::Name pluginName, nos::Name entryName, RegisteredEntry& entry) {
+nosResult EntryManager::TryGetOrCreateFromClosestValidEntry(nos::Name pluginName, nos::Name entryName, RegisteredEntry& entry) {
 	auto const& requestedPluginVer = PluginVersions[pluginName].first;
 	nos::util::SemVer entryVer;
 	EntryTypeNameBufferPair entryVal;

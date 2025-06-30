@@ -160,7 +160,7 @@ nosResult RegisterEntry(nosSettingsEntryParams* params) {
 	if (params->Visualizer)
 		params->Visualizer->UnPackTo(&entry.Visualizer);
 
-	entryManager->TryToGetClosestFittingEntry(pluginInfo.Id.Name, nos::Name(params->EntryName), entry);
+	entryManager->TryGetOrCreateFromClosestValidEntry(pluginInfo.Id.Name, nos::Name(params->EntryName), entry);
 	UpdateEditorEntriesForPlugin(pluginInfo.Id.Name);
 
 	return NOS_RESULT_SUCCESS;
