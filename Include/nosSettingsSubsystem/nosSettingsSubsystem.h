@@ -39,7 +39,7 @@ typedef struct nosSettingsEntryParams {
 	nosName DisplayName;
 	// Target module name, editor can decide where to place this entry
 	// For example, if this is "nos.sys.device", editor can place this entry under "Devices" section
-	nosName TargetName;
+	nosName UiTargetName;
 } nosSettingsEntryParams;
 
 typedef struct nosSettingsSubsystem
@@ -89,7 +89,7 @@ namespace nos::sys::settings {
 		params.IsEditableFromEditor = editableFromEditor;
 
 		if (targetName.has_value())
-			params.TargetName = nos::Name(*targetName);
+			params.UiTargetName = nos::Name(*targetName);
 		
 		nos::Buffer visualizerBuf;
 		if (visualizer.has_value()) {

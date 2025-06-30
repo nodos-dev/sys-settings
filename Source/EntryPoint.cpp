@@ -28,7 +28,7 @@ nos::Buffer GenerateEditorItemsForPlugin(nos::Name pluginName, const std::unorde
 		item->entry->type_name = entry.TypeName;
 		item->entry->entry_name = entryName;
 		item->entry->data = entry.LastValue;
-		item->entry->target_name = entry.TargetName;
+		item->entry->ui_target_name = entry.TargetName;
 	}
 	return nos::Buffer::From(list);
 }
@@ -154,7 +154,7 @@ nosResult RegisterEntry(nosSettingsEntryParams* params) {
 		entry.LastValue = params->DefaultValueBuffer;
 	entry.IsEditableFromEditor = params->IsEditableFromEditor;
 	entry.SaveFlag = params->WriteDirectories;
-	entry.TargetName = params->TargetName;
+	entry.TargetName = params->UiTargetName;
 	entry.TypeName = params->TypeName;
 	entry.UpdateCallback = params->UpdateCallback;
 	entry.DisplayName = params->DisplayName;

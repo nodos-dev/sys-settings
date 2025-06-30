@@ -6,7 +6,7 @@ attribute "key";
 table SettingsEntry{
     entry_name: string (key);
     type_name: string;
-    target_name: string;
+    ui_target_name: string;
     data: [ubyte] (dynamic: "type_name");
 }
 
