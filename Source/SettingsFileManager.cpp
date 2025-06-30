@@ -5,7 +5,7 @@
 #include <nosSettingsSubsystem/EditorEvents_generated.h>
 #include <unordered_map>
 #include <Nodos/Helpers.hpp>
-#include "Main.h"
+#include "EntryManager.h"
 #include "Globals.h"
 
 namespace nos::sys::settings {

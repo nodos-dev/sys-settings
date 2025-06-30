@@ -4,7 +4,7 @@
 #include <nosSettingsSubsystem/EditorEvents_generated.h>
 #include <unordered_map>
 #include <Nodos/Helpers.hpp>
-#include "Main.h"
+#include "EntryManager.h"
 #include "Globals.h"
 NOS_INIT()
 NOS_BEGIN_IMPORT_DEPS()
@@ -152,7 +152,6 @@ nosResult RegisterEntry(nosSettingsEntryParams* params) {
 	auto& entry = entryManager->RegisteredEntries[pluginInfo.Id.Name][nos::Name(params->EntryName)];
 	if (params->DefaultValueBuffer.Data)
 		entry.LastValue = params->DefaultValueBuffer;
-	entry.IsEditableFromEditor = params->IsEditableFromEditor;
 	entry.SaveFlag = params->WriteDirectories;
 	entry.TargetName = params->UiTargetName;
 	entry.TypeName = params->TypeName;

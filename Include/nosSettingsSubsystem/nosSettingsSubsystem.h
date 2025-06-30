@@ -34,7 +34,6 @@ typedef struct nosSettingsEntryParams {
 	nosName EntryName; // If NULL, "default" will be used
 	nosSettingsFileDirectoryFlag WriteDirectories; // Directory flags to determine where this entry will be stored
 	nosPfnSettingsEntryUpdate UpdateCallback; // Callback to update the entry value
-	bool IsEditableFromEditor; // If true, this entry will be editable from editor
 	nosSettingsEditorVisualizer Visualizer; // Visualizer for the entry in editor
 	nosName DisplayName;
 	// Target module name, editor can decide where to place this entry
@@ -71,7 +70,7 @@ extern nosSettingsSubsystem* nosSettings;
 #include <Nodos/Name.hpp>
 
 namespace nos::sys::settings {
-	inline nosResult RegisterEntry(std::string const& entryName, std::string const& typeName, nosPfnSettingsEntryUpdate updateCallback, std::optional<nosBuffer> defaultVal = std::nullopt, nosSettingsFileDirectoryFlag writeDirectories = NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE, bool editableFromEditor = true, std::optional<std::string> displayName = std::nullopt, std::optional<std::string> targetName = std::nullopt, std::optional<nos::fb::TVisualizer> visualizer = std::nullopt) {
+	inline nosResult RegisterEntry(std::string const& entryName, std::string const& typeName, nosPfnSettingsEntryUpdate updateCallback, std::optional<nosBuffer> defaultVal = std::nullopt, nosSettingsFileDirectoryFlag writeDirectories = NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE, std::optional<std::string> displayName = std::nullopt, std::optional<std::string> targetName = std::nullopt, std::optional<nos::fb::TVisualizer> visualizer = std::nullopt) {
 		nosSettingsEntryParams params{};
 		params.EntryName = nos::Name(entryName);
 		params.TypeName = nos::Name(typeName);
@@ -86,7 +85,6 @@ namespace nos::sys::settings {
 			params.DefaultValueBuffer = *defaultVal;
 		
 		params.WriteDirectories = writeDirectories;
-		params.IsEditableFromEditor = editableFromEditor;
 
 		if (targetName.has_value())
 			params.UiTargetName = nos::Name(*targetName);

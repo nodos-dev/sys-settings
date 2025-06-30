@@ -15,7 +15,6 @@ struct RegisteredEntry {
 	nos::Name TypeName;
 	nos::Buffer LastValue;
 	nosSettingsFileDirectoryFlag SaveFlag;
-	bool IsEditableFromEditor;
 	nos::fb::TVisualizer Visualizer{};
 	nos::Name TargetName;
 	nos::Name DisplayName;
