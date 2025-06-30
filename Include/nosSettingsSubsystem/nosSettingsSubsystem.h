@@ -8,7 +8,7 @@
 
 // NOS_RESULT_SUCCESS: Item value will be serialized to the WriteDirectories
 // NOS_RESULT_FAIL: Default item value will be serialized to the WriteDirectories
-typedef nosResult(*nosPfnSettingsEntryUpdate)(nosName entryName, nosBuffer itemValue);
+typedef nosResult(*nosPfnSettingsEntryUpdate)(const char* entryName, nosBuffer itemValue);
 typedef uint64_t nosSettingsEntryId;
 
 #if NOS_HAS_CPLUSPLUS_20
@@ -31,22 +31,22 @@ typedef struct nosSettingsEntryParams {
 	// If nosPfnSettingsEntryUpdate callback returns NOS_SETTINGS_ENTRY_NON_COMPATIBLE, this will be saved
 	// Don't forget to free this buffer
 	nosBuffer DefaultValueBuffer;
-	nosName EntryName; // If NULL, "default" will be used
+	const char* EntryName; // If NULL, "default" will be used
 	nosSettingsFileDirectoryFlag WriteDirectories; // Directory flags to determine where this entry will be stored
 	nosPfnSettingsEntryUpdate UpdateCallback; // Callback to update the entry value
 	nosSettingsEditorVisualizer Visualizer; // Visualizer for the entry in editor
-	nosName DisplayName;
+	const char* DisplayName;
 	// Target module name, editor can decide where to place this entry
 	// For example, if this is "nos.sys.device", editor can place this entry under "Devices" section
-	nosName UiTargetName;
+	const char* UiTargetName;
 } nosSettingsEntryParams;
 
 typedef struct nosSettingsSubsystem
 {
 	nosResult(NOSAPI_CALL *RegisterEntry)(nosSettingsEntryParams* parameters);
-	nosResult(NOSAPI_CALL* UpdateEntryValue)(nosName entryName, nosBuffer value);
+	nosResult(NOSAPI_CALL* UpdateEntryValue)(const char* entryName, nosBuffer value);
 	// An entry can only be unregistered by the plugin it's registered from
-	void(NOSAPI_CALL* UnregisterEntry)(nosName entryName);
+	void(NOSAPI_CALL* UnregisterEntry)(const char* entryName);
 } nosSettingsSubsystem;
 
 #pragma region Helper Declarations & Macros
@@ -72,12 +72,12 @@ extern nosSettingsSubsystem* nosSettings;
 namespace nos::sys::settings {
 	inline nosResult RegisterEntry(std::string const& entryName, std::string const& typeName, nosPfnSettingsEntryUpdate updateCallback, std::optional<nosBuffer> defaultVal = std::nullopt, nosSettingsFileDirectoryFlag writeDirectories = NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE, std::optional<std::string> displayName = std::nullopt, std::optional<std::string> targetName = std::nullopt, std::optional<nos::fb::TVisualizer> visualizer = std::nullopt) {
 		nosSettingsEntryParams params{};
-		params.EntryName = nos::Name(entryName);
+		params.EntryName = entryName.empty() ? NULL : entryName.c_str();
 		params.TypeName = nos::Name(typeName);
 		params.UpdateCallback = updateCallback;
 
-		if (displayName.has_value())
-			params.DisplayName = nos::Name(*displayName);
+		if (displayName.has_value() && !displayName->empty())
+			params.DisplayName = displayName->c_str();
 		else 
 			params.DisplayName = params.EntryName;
 		
@@ -86,8 +86,8 @@ namespace nos::sys::settings {
 		
 		params.WriteDirectories = writeDirectories;
 
-		if (targetName.has_value())
-			params.UiTargetName = nos::Name(*targetName);
+		if (targetName.has_value() && !targetName->empty())
+			params.UiTargetName = targetName->c_str();
 		
 		nos::Buffer visualizerBuf;
 		if (visualizer.has_value()) {
@@ -99,7 +99,7 @@ namespace nos::sys::settings {
 	}
 
 	inline void UnregisterEntry(std::string const& entryName) {
-		nosSettings->UnregisterEntry(nos::Name(entryName));
+		nosSettings->UnregisterEntry(entryName.c_str());
 	}
 }
 #endif // NOS_HAS_CPLUSPLUS_20

@@ -16,7 +16,7 @@ std::unique_ptr<EntryManager> GSettingsEntryManager = nullptr;
 std::unordered_map<uint32_t, std::unique_ptr<nosSettingsSubsystem>> GExportedAPIVersions;
 
 
-nos::Buffer GenerateEditorItemsForPlugin(nos::Name pluginName, const std::unordered_map<nos::Name, RegisteredEntry>& entries) {
+nos::Buffer GenerateEditorItemsForPlugin(nos::Name pluginName, const std::unordered_map<std::string, RegisteredEntry>& entries) {
 	editor::TSettingsUpdateFromSubsystem list;
 	list.plugin_name = pluginName;
 	for (auto& [entryName, entry] : entries) {
@@ -28,7 +28,7 @@ nos::Buffer GenerateEditorItemsForPlugin(nos::Name pluginName, const std::unorde
 		item->entry->type_name = entry.TypeName;
 		item->entry->entry_name = entryName;
 		item->entry->data = entry.LastValue;
-		item->entry->ui_target_name = entry.TargetName;
+		item->entry->ui_target_name = entry.UiTargetName;
 	}
 	return nos::Buffer::From(list);
 }
@@ -80,18 +80,18 @@ void OnMessageFromEditor(uint64_t editorId, nosBuffer message)
 	}
 
 	auto entryName = msg->entry()->entry_name()->c_str();
-	auto entryIt = it->second.find(nos::Name(entryName));
+	auto entryIt = it->second.find(entryName);
 	if (entryIt == it->second.end()) {
 		nosEngine.LogW("Plugin %s is not registered %s for editor settings, but Editor sent a message.", pluginName, entryName);
 		return;
 	}
 	auto& entry = entryIt->second;
 	auto val = nos::Buffer(msg->entry()->data());
-	auto ret = entry.UpdateCallback(nos::Name(entryName), *val.GetInternal());
+	auto ret = entry.UpdateCallback(entryName, *val.GetInternal());
 	if (entry.ReadEntryPluginVer == util::SemVer{}) 
 		entry.ReadEntryPluginVer = util::SemVer::ParseFrom(nos::Name(GSettingsEntryManager->PluginVersions[nos::Name(pluginName)].second.Id.Version).AsCStr());
 	if (ret == NOS_RESULT_SUCCESS)
-		GSettingsEntryManager->UpdateEntry(nos::Name(pluginName), entry.ReadEntryPluginVer, entry.SaveFlag, nos::Name(entryName), { entry.TypeName, val });
+		GSettingsEntryManager->UpdateEntry(nos::Name(pluginName), entry.ReadEntryPluginVer, entry.SaveFlag, entryName, { entry.TypeName, val });
 	else
 		nosEngine.LogE("Failed to update the entry, last value remains");
 }
@@ -149,57 +149,60 @@ nosResult RegisterEntry(nosSettingsEntryParams* params) {
 
 	auto& entryManager = settings::GSettingsEntryManager;
 	std::unique_lock lock(entryManager->RegisteredEntriesMutex);
-	auto& entry = entryManager->RegisteredEntries[pluginInfo.Id.Name][nos::Name(params->EntryName)];
+	std::string entryName = params->EntryName ? params->EntryName : DEFAULT_SETTINGS_ENTRY_NAME;
+	auto& entry = entryManager->RegisteredEntries[pluginInfo.Id.Name][entryName];
 	if (params->DefaultValueBuffer.Data)
 		entry.LastValue = params->DefaultValueBuffer;
 	entry.SaveFlag = params->WriteDirectories;
-	entry.TargetName = params->UiTargetName;
+	entry.UiTargetName = params->UiTargetName ? params->UiTargetName : "";
 	entry.TypeName = params->TypeName;
 	entry.UpdateCallback = params->UpdateCallback;
-	entry.DisplayName = params->DisplayName;
+	entry.DisplayName = params->DisplayName ? params->DisplayName : entryName;
 	if (params->Visualizer)
 		params->Visualizer->UnPackTo(&entry.Visualizer);
 
-	entryManager->TryGetOrCreateFromClosestValidEntry(pluginInfo.Id.Name, nos::Name(params->EntryName), entry);
+	entryManager->TryGetOrCreateFromClosestValidEntry(pluginInfo.Id.Name, entryName, entry);
 	UpdateEditorEntriesForPlugin(pluginInfo.Id.Name);
 
 	return NOS_RESULT_SUCCESS;
 }
 
-void UnregisterEntry(nosName entryName) {
+void UnregisterEntry(const char* entryName) {
 	nosPluginInfo pluginInfo = {};
 	if (nosEngine.GetCallingPlugin(&pluginInfo) != NOS_RESULT_SUCCESS) {
 		nosEngine.LogE("Failed to get calling plugin info for settings entry unregistration.");
 		return;
 	}
 
+	std::string entryNameStr = entryName ? entryName : DEFAULT_SETTINGS_ENTRY_NAME;
 	auto& entryManager = settings::GSettingsEntryManager;
 	std::unique_lock lock(entryManager->RegisteredEntriesMutex);
 	auto pluginName = pluginInfo.Id.Name;
 	auto& entries = entryManager->RegisteredEntries[pluginName];
-	entries.erase(entryName);
+	entries.erase(entryNameStr);
 	if (!entries.size()) {
 		entryManager->RegisteredEntries.erase(pluginName);
 		entryManager->LocalEntries.erase(pluginName);
 	}
 }
 
-nosResult UpdateEntryValue(nosName entryName, nosBuffer value) {
+nosResult UpdateEntryValue(const char* entryName, nosBuffer value) {
 	nosPluginInfo pluginInfo = {};
 	if (nosEngine.GetCallingPlugin(&pluginInfo) != NOS_RESULT_SUCCESS) {
 		nosEngine.LogE("Failed to get calling plugin info for settings entry update.");
 		return NOS_RESULT_FAILED;
 	}
 
+	std::string entryNameStr = entryName ? entryName : DEFAULT_SETTINGS_ENTRY_NAME;
 	nos::Name pluginName = pluginInfo.Id.Name;
 	auto& entryManager = settings::GSettingsEntryManager;
 	std::shared_lock lock(entryManager->RegisteredEntriesMutex);
-	auto entry = entryManager->RegisteredEntries[pluginName].find(entryName);
+	auto entry = entryManager->RegisteredEntries[pluginName].find(entryNameStr);
 	if (entry == entryManager->RegisteredEntries[pluginName].end())
 		return NOS_RESULT_NOT_FOUND;
 
 	entry->second.LastValue = value;
-	return GSettingsEntryManager->UpdateEntry(pluginName, entry->second.ReadEntryPluginVer, entry->second.SaveFlag, entryName, { entry->second.TypeName, value });
+	return GSettingsEntryManager->UpdateEntry(pluginName, entry->second.ReadEntryPluginVer, entry->second.SaveFlag, entryNameStr, { entry->second.TypeName, value });
 }
 }
 

@@ -11,7 +11,6 @@
 namespace nos::sys::settings {
 NOS_REGISTER_NAME_SPACED(SETTINGS_ENTRY_TYPENAME, nos::sys::settings::SettingsEntry::GetFullyQualifiedName());
 NOS_REGISTER_NAME_SPACED(SETTINGS_LIST_TYPENAME, nos::sys::settings::SettingsList::GetFullyQualifiedName());
-static constexpr char DEFAULT_SETTINGS_ENTRY_NAME[] = "default";
 
 std::filesystem::path GetFilePathFromEntry(nos::Name pluginName, util::SemVer pluginVer, nosSettingsFileDirectory dir) {
 	auto fileName = pluginName.AsString() + "-" + std::string(pluginVer) + ".json";
@@ -112,8 +111,8 @@ nosResult EntryManager::ReadSettingsFile(std::filesystem::path filePath, ReadEnt
 			continue;
 
 		auto ver = GetPluginVersionFromName(filePath.filename().string());
-		readEntries.Entries[nos::Name(it->entry_name()->str())].push_back({});
-		auto& entry = readEntries.Entries[nos::Name(it->entry_name()->str())].back();
+		readEntries.Entries[it->entry_name()->str()].push_back({});
+		auto& entry = readEntries.Entries[it->entry_name()->str()].back();
 		entry = { ver , {nos::Name(it->type_name()->c_str()), nos::Buffer(it->data())} };
 	}
 
@@ -137,7 +136,7 @@ nosResult EntryManager::WriteSettingsFile(nos::Name pluginName, util::SemVer plu
 				continue;
 			settingsList.settings.push_back(std::make_unique<nos::sys::settings::TSettingsEntry>());
 			auto& tEntry = settingsList.settings.back();
-			tEntry->entry_name = entryName.AsString();
+			tEntry->entry_name = entryName;
 			tEntry->type_name = entryVal.first.AsString();
 			tEntry->data = entryVal.second;
 		}
@@ -156,7 +155,7 @@ nosResult EntryManager::WriteSettingsFile(nos::Name pluginName, util::SemVer plu
 	return NOS_RESULT_SUCCESS;
 };
 
-nosResult EntryManager::TryGetOrCreateFromClosestValidEntry(nos::Name pluginName, nos::Name entryName, RegisteredEntry& entry) {
+nosResult EntryManager::TryGetOrCreateFromClosestValidEntry(nos::Name pluginName, std::string entryName, RegisteredEntry& entry) {
 	auto const& requestedPluginVer = PluginVersions[pluginName].first;
 	nos::util::SemVer entryVer;
 	EntryTypeNameBufferPair entryVal;
@@ -169,7 +168,7 @@ nosResult EntryManager::TryGetOrCreateFromClosestValidEntry(nos::Name pluginName
 					continue;
 
 				if (pluginVer <= requestedPluginVer) {
-					result = entry.UpdateCallback(entryName, entryValPair.second);
+					result = entry.UpdateCallback(entryName.c_str(), entryValPair.second);
 					entryVer = pluginVer;
 					entryVal = entryValPair;
 					entry.ReadEntryPluginVer = entryVer;
@@ -199,7 +198,7 @@ nosResult EntryManager::TryGetOrCreateFromClosestValidEntry(nos::Name pluginName
 }
 
 
-nosResult EntryManager::UpdateEntry(nos::Name pluginName, nos::util::SemVer pluginVersion, nosSettingsFileDirectoryFlag directories, nos::Name entryName, EntryTypeNameBufferPair entryVal) {
+nosResult EntryManager::UpdateEntry(nos::Name pluginName, nos::util::SemVer pluginVersion, nosSettingsFileDirectoryFlag directories, std::string const& entryName, EntryTypeNameBufferPair entryVal) {
 	auto addOrUpdateEntry = [&](ReadEntryList& entryList, nosSettingsFileDirectory dir) {
 		auto updateEntry = [&](nos::util::SemVer entrySemVer) -> nosResult {
 			auto res = WriteSettingsFile(pluginName, entrySemVer, dir, entryList);

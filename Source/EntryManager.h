@@ -16,8 +16,8 @@ struct RegisteredEntry {
 	nos::Buffer LastValue;
 	nosSettingsFileDirectoryFlag SaveFlag;
 	nos::fb::TVisualizer Visualizer{};
-	nos::Name TargetName;
-	nos::Name DisplayName;
+	std::string UiTargetName;
+	std::string DisplayName;
 	nosPfnSettingsEntryUpdate UpdateCallback = nullptr;
 	// If an entry with the same name from a previous version of this plugin is already read, save according to it
 	nos::util::SemVer ReadEntryPluginVer{};
@@ -28,7 +28,7 @@ struct ReadEntryList
 {
 	std::shared_mutex FileMutex;
 	// EntryName -> {PluginVer, {TypeName, Buffer}} (sorted by plugin version)
-	std::unordered_map<nos::Name, std::vector<std::pair<nos::util::SemVer, EntryTypeNameBufferPair>>> Entries;
+	std::unordered_map<std::string, std::vector<std::pair<nos::util::SemVer, EntryTypeNameBufferPair>>> Entries;
 };
 
 nosResult UpdateEditorEntriesForPlugin(nos::Name pluginName);
@@ -39,7 +39,7 @@ void OnMessageFromEditor(uint64_t editorId, nosBuffer message);
 struct EntryManager
 {
 	// PluginName -> EntryName -> RegisteredEntry
-	std::unordered_map<nos::Name, std::unordered_map<nos::Name, RegisteredEntry>> RegisteredEntries;
+	std::unordered_map<nos::Name, std::unordered_map<std::string, RegisteredEntry>> RegisteredEntries;
 	std::shared_mutex RegisteredEntriesMutex;
 	// PluginName -> { PluginVersion, PluginInfo }
 	std::unordered_map<nos::Name, std::pair<nos::util::SemVer, nosPluginInfo>> PluginVersions;
@@ -52,9 +52,9 @@ struct EntryManager
 	// For each matching entry, calls the UpdateCallback with the entry name and value
 	// First one to return NOS_RESULT_SUCCESS will be used
 	// If no matching entry is found, NOS_RESULT_FAILED will be returned
-	nosResult TryGetOrCreateFromClosestValidEntry(nos::Name pluginName, nos::Name entryName, RegisteredEntry& entry);
+	nosResult TryGetOrCreateFromClosestValidEntry(nos::Name pluginName, std::string entryName, RegisteredEntry& entry);
 	// If there is a matching entry with the same plugin version, updates it
 	// If there is not, creates a new entry
-	nosResult UpdateEntry(nos::Name pluginName, nos::util::SemVer pluginVersion, nosSettingsFileDirectoryFlag directories, nos::Name entryName, EntryTypeNameBufferPair entryVal);
+	nosResult UpdateEntry(nos::Name pluginName, nos::util::SemVer pluginVersion, nosSettingsFileDirectoryFlag directories, std::string const& entryName, EntryTypeNameBufferPair entryVal);
 };
 }
