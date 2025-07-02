@@ -17,14 +17,6 @@ typedef nos::fb::Visualizer* nosSettingsEditorVisualizer;
 typedef void* nosSettingsEditorVisualizer;
 #endif
 
-typedef enum nosSettingsFileDirectory {
-	NOS_SETTINGS_FILE_DIRECTORY_LOCAL = 1 << 0, // Module's root folder
-	NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE = 1 << 1, // Engine's config folder
-	NOS_SETTINGS_FILE_DIRECTORY_GLOBAL = 1 << 2	// AppData folder
-} nosSettingsFileDirectory;
-
-typedef uint32_t nosSettingsFileDirectoryFlag;
-
 typedef struct nosSettingsEntryParams {
 	nosName TypeName;
 	// Default value of the buffer
@@ -32,7 +24,6 @@ typedef struct nosSettingsEntryParams {
 	// Don't forget to free this buffer
 	nosBuffer DefaultValueBuffer;
 	const char* EntryName; // If NULL, "default" will be used
-	nosSettingsFileDirectoryFlag WriteDirectories; // Directory flags to determine where this entry will be stored
 	nosPfnSettingsEntryUpdate UpdateCallback; // Callback to update the entry value
 	nosSettingsEditorVisualizer Visualizer; // Visualizer for the entry in editor
 	const char* DisplayName;
@@ -43,7 +34,7 @@ typedef struct nosSettingsEntryParams {
 
 typedef struct nosSettingsSubsystem
 {
-	nosResult(NOSAPI_CALL *RegisterEntry)(nosSettingsEntryParams* parameters);
+	nosResult(NOSAPI_CALL *RegisterEntry)(const nosSettingsEntryParams* parameters);
 	nosResult(NOSAPI_CALL* UpdateEntryValue)(const char* entryName, nosBuffer value);
 	// An entry can only be unregistered by the plugin it's registered from
 	void(NOSAPI_CALL* UnregisterEntry)(const char* entryName);
@@ -70,7 +61,7 @@ extern nosSettingsSubsystem* nosSettings;
 #include <Nodos/Name.hpp>
 
 namespace nos::sys::settings {
-	inline nosResult RegisterEntry(std::string const& entryName, std::string const& typeName, nosPfnSettingsEntryUpdate updateCallback, std::optional<nosBuffer> defaultVal = std::nullopt, nosSettingsFileDirectoryFlag writeDirectories = NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE, std::optional<std::string> displayName = std::nullopt, std::optional<std::string> targetName = std::nullopt, std::optional<nos::fb::TVisualizer> visualizer = std::nullopt) {
+	inline nosResult RegisterEntry(std::string const& entryName, std::string const& typeName, nosPfnSettingsEntryUpdate updateCallback, std::optional<nosBuffer> defaultVal = std::nullopt, std::optional<std::string> displayName = std::nullopt, std::optional<std::string> targetName = std::nullopt, std::optional<nos::fb::TVisualizer> visualizer = std::nullopt) {
 		nosSettingsEntryParams params{};
 		params.EntryName = entryName.empty() ? NULL : entryName.c_str();
 		params.TypeName = nos::Name(typeName);
@@ -83,8 +74,6 @@ namespace nos::sys::settings {
 		
 		if (defaultVal.has_value())
 			params.DefaultValueBuffer = *defaultVal;
-		
-		params.WriteDirectories = writeDirectories;
 
 		if (targetName.has_value() && !targetName->empty())
 			params.UiTargetName = targetName->c_str();

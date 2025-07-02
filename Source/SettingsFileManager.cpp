@@ -12,19 +12,19 @@ namespace nos::sys::settings {
 NOS_REGISTER_NAME_SPACED(SETTINGS_ENTRY_TYPENAME, nos::sys::settings::SettingsEntry::GetFullyQualifiedName());
 NOS_REGISTER_NAME_SPACED(SETTINGS_LIST_TYPENAME, nos::sys::settings::SettingsList::GetFullyQualifiedName());
 
-std::filesystem::path GetFilePathFromEntry(nos::Name pluginName, util::SemVer pluginVer, nosSettingsFileDirectory dir) {
+std::filesystem::path GetFilePathFromEntry(nos::Name pluginName, util::SemVer pluginVer, editor::SettingsEntryFileDirectory dir) {
 	auto fileName = pluginName.AsString() + "-" + std::string(pluginVer) + ".json";
 	switch (dir)
 	{
-	case NOS_SETTINGS_FILE_DIRECTORY_LOCAL:
+	case editor::SettingsEntryFileDirectory::LOCAL:
 	{
 		return std::filesystem::path(GSettingsEntryManager->PluginVersions[pluginName].second.RootFolderPath) / fileName;
 	}
-	case NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE:
+	case editor::SettingsEntryFileDirectory::WORKSPACE:
 	{
 		return std::filesystem::path(nosEngine.GetEnginePath(NOS_ENGINE_PATH_CONFIG)) / fileName;
 	}
-	case NOS_SETTINGS_FILE_DIRECTORY_GLOBAL:
+	case editor::SettingsEntryFileDirectory::GLOBAL:
 	{
 		return std::filesystem::path(nosEngine.GetEnginePath(NOS_ENGINE_PATH_APPDATA)) / fileName;
 	}
@@ -119,7 +119,7 @@ nosResult EntryManager::ReadSettingsFile(std::filesystem::path filePath, ReadEnt
 	return NOS_RESULT_SUCCESS;
 }
 
-nosResult EntryManager::WriteSettingsFile(nos::Name pluginName, util::SemVer pluginVer, nosSettingsFileDirectory dir, const ReadEntryList& entries) const
+nosResult EntryManager::WriteSettingsFile(nos::Name pluginName, util::SemVer pluginVer, editor::SettingsEntryFileDirectory dir, const ReadEntryList& entries) const
 {
 	std::ofstream file(GetFilePathFromEntry(pluginName, pluginVer, dir));
 	flatbuffers::FlatBufferBuilder builder;
@@ -176,7 +176,7 @@ nosResult EntryManager::TryGetOrCreateFromClosestValidEntry(nos::Name pluginName
 				}
 			}
 			if (result == NOS_RESULT_SUCCESS) {
-				return UpdateEntry(pluginName, entryVer, entry.SaveFlag, entryName, entryVal);
+				return UpdateEntry(pluginName, entryVer, entry.SaveDir, entryName, entryVal);
 			}
 		}
 		return NOS_RESULT_FAILED;
@@ -198,8 +198,8 @@ nosResult EntryManager::TryGetOrCreateFromClosestValidEntry(nos::Name pluginName
 }
 
 
-nosResult EntryManager::UpdateEntry(nos::Name pluginName, nos::util::SemVer pluginVersion, nosSettingsFileDirectoryFlag directories, std::string const& entryName, EntryTypeNameBufferPair entryVal) {
-	auto addOrUpdateEntry = [&](ReadEntryList& entryList, nosSettingsFileDirectory dir) {
+nosResult EntryManager::UpdateEntry(nos::Name pluginName, nos::util::SemVer pluginVersion, editor::SettingsEntryFileDirectory dir, std::string const& entryName, EntryTypeNameBufferPair entryVal) {
+	auto addOrUpdateEntry = [&](ReadEntryList& entryList, editor::SettingsEntryFileDirectory dir) {
 		auto updateEntry = [&](nos::util::SemVer entrySemVer) -> nosResult {
 			auto res = WriteSettingsFile(pluginName, entrySemVer, dir, entryList);
 			if(res != NOS_RESULT_SUCCESS) {
@@ -232,15 +232,6 @@ nosResult EntryManager::UpdateEntry(nos::Name pluginName, nos::util::SemVer plug
 		return updateEntry(entriesFromDifVersions.back().first);
 	};
 
-	if(directories & NOS_SETTINGS_FILE_DIRECTORY_LOCAL) {
-		return addOrUpdateEntry(LocalEntries[pluginName], NOS_SETTINGS_FILE_DIRECTORY_LOCAL);
-	}
-	if (directories & NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE) {
-		return addOrUpdateEntry(WorkspaceEntries[pluginName], NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE);
-	}
-	if (directories & NOS_SETTINGS_FILE_DIRECTORY_GLOBAL) {
-		return addOrUpdateEntry(GlobalEntries[pluginName], NOS_SETTINGS_FILE_DIRECTORY_GLOBAL);
-	}
-	return NOS_RESULT_FAILED; // No directories specified or invalid directories
+	return addOrUpdateEntry(LocalEntries[pluginName], dir);
 }
 }

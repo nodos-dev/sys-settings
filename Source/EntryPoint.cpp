@@ -91,7 +91,7 @@ void OnMessageFromEditor(uint64_t editorId, nosBuffer message)
 	if (entry.ReadEntryPluginVer == util::SemVer{}) 
 		entry.ReadEntryPluginVer = util::SemVer::ParseFrom(nos::Name(GSettingsEntryManager->PluginVersions[nos::Name(pluginName)].second.Id.Version).AsCStr());
 	if (ret == NOS_RESULT_SUCCESS)
-		GSettingsEntryManager->UpdateEntry(nos::Name(pluginName), entry.ReadEntryPluginVer, entry.SaveFlag, entryName, { entry.TypeName, val });
+		GSettingsEntryManager->UpdateEntry(nos::Name(pluginName), entry.ReadEntryPluginVer, entry.SaveDir, entryName, { entry.TypeName, val });
 	else
 		nosEngine.LogE("Failed to update the entry, last value remains");
 }
@@ -135,7 +135,7 @@ void RegisterPlugin(const nosPluginInfo& pluginInfo) {
 	settings::GSettingsEntryManager->PluginVersions[pluginInfo.Id.Name] = {nos::util::SemVer::ParseFrom(nos::Name(pluginInfo.Id.Version).AsCStr()), pluginInfo};
 }
 
-nosResult RegisterEntry(nosSettingsEntryParams* params) {
+nosResult RegisterEntry(const nosSettingsEntryParams* params) {
 	if (!params)
 		return NOS_RESULT_INVALID_ARGUMENT;
 
@@ -153,7 +153,7 @@ nosResult RegisterEntry(nosSettingsEntryParams* params) {
 	auto& entry = entryManager->RegisteredEntries[pluginInfo.Id.Name][entryName];
 	if (params->DefaultValueBuffer.Data)
 		entry.LastValue = params->DefaultValueBuffer;
-	entry.SaveFlag = params->WriteDirectories;
+	entry.SaveDir = editor::SettingsEntryFileDirectory::WORKSPACE;
 	entry.UiTargetName = params->UiTargetName ? params->UiTargetName : "";
 	entry.TypeName = params->TypeName;
 	entry.UpdateCallback = params->UpdateCallback;
@@ -202,7 +202,7 @@ nosResult UpdateEntryValue(const char* entryName, nosBuffer value) {
 		return NOS_RESULT_NOT_FOUND;
 
 	entry->second.LastValue = value;
-	return GSettingsEntryManager->UpdateEntry(pluginName, entry->second.ReadEntryPluginVer, entry->second.SaveFlag, entryNameStr, { entry->second.TypeName, value });
+	return GSettingsEntryManager->UpdateEntry(pluginName, entry->second.ReadEntryPluginVer, entry->second.SaveDir, entryNameStr, { entry->second.TypeName, value });
 }
 }
 

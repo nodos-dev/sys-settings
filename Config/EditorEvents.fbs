@@ -17,11 +17,18 @@ table SettingsUpdateFromEditor{
 	entry: nos.sys.settings.SettingsEntry;
 }
 
+enum SettingsEntryFileDirectory : uint{
+	LOCAL = 0,
+	WORKSPACE = 1,
+	GLOBAL = 2
+}
+
 // Editor will use this structure to display settings
 table SettingsEditorItem{
     item_display_name:string (key);
     visualizer: nos.fb.Visualizer;
 	entry: nos.sys.settings.SettingsEntry;
+	directory: SettingsEntryFileDirectory;
 }
 
 // List of items to be displayed in the editor

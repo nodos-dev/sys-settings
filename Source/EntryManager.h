@@ -10,11 +10,10 @@
 namespace nos::sys::settings
 {
 
-
 struct RegisteredEntry {
 	nos::Name TypeName;
 	nos::Buffer LastValue;
-	nosSettingsFileDirectoryFlag SaveFlag;
+	editor::SettingsEntryFileDirectory SaveDir;
 	nos::fb::TVisualizer Visualizer{};
 	std::string UiTargetName;
 	std::string DisplayName;
@@ -47,7 +46,7 @@ struct EntryManager
 	// PluginName -> EntryList
 	std::unordered_map<nos::Name, ReadEntryList> GlobalEntries, WorkspaceEntries, LocalEntries;
 	nosResult ReadSettingsFile(std::filesystem::path filePath, ReadEntryList& readEntries);
-	nosResult WriteSettingsFile(nos::Name pluginName, util::SemVer pluginVer, nosSettingsFileDirectory dir, const ReadEntryList& entries) const;
+	nosResult WriteSettingsFile(nos::Name pluginName, util::SemVer pluginVer, editor::SettingsEntryFileDirectory dir, const ReadEntryList& entries) const;
 	// Searches through local, workspace and global settings files
 	// For each matching entry, calls the UpdateCallback with the entry name and value
 	// First one to return NOS_RESULT_SUCCESS will be used
@@ -55,6 +54,6 @@ struct EntryManager
 	nosResult TryGetOrCreateFromClosestValidEntry(nos::Name pluginName, std::string entryName, RegisteredEntry& entry);
 	// If there is a matching entry with the same plugin version, updates it
 	// If there is not, creates a new entry
-	nosResult UpdateEntry(nos::Name pluginName, nos::util::SemVer pluginVersion, nosSettingsFileDirectoryFlag directories, std::string const& entryName, EntryTypeNameBufferPair entryVal);
+	nosResult UpdateEntry(nos::Name pluginName, nos::util::SemVer pluginVersion, editor::SettingsEntryFileDirectory dir, std::string const& entryName, EntryTypeNameBufferPair entryVal);
 };
 }
