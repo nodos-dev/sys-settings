@@ -42,14 +42,44 @@ nosResult UpdateEditorEntriesForPlugin(nos::Name pluginName)
 	return NOS_RESULT_SUCCESS;
 }
 
-nosResult UnregisterEditorSettings(nos::Name pluginName)
+// Don't forget to lock RegisteredEntries list before calling this
+void UnregisterEntryInternal(nosName pluginName, const char* entryName) {
+	std::string entryNameStr = entryName ? entryName : DEFAULT_SETTINGS_ENTRY_NAME;
+	auto& entryManager = settings::GSettingsEntryManager;
+	auto& entries = entryManager->RegisteredEntries[pluginName];
+	entries.erase(entryNameStr);
+	if (!entries.size()) {
+		entryManager->RegisteredEntries.erase(pluginName);
+		entryManager->LocalEntries.erase(pluginName);
+	}
+}
+
+void UnregisterEntry(const char* entryName) {
+	nosPluginInfo pluginInfo = {};
+	if (nosEngine.GetCallingPlugin(&pluginInfo) != NOS_RESULT_SUCCESS) {
+		nosEngine.LogE("Failed to get calling plugin info for settings entry registration.");
+		return;
+	}
+
+	std::unique_lock lock(GSettingsEntryManager->RegisteredEntriesMutex);
+	UnregisterEntryInternal(pluginInfo.Id.Name, entryName);
+}
+
+nosResult UnregisterSettings(nos::Name pluginName)
 {
 	std::shared_lock lock(GSettingsEntryManager->RegisteredEntriesMutex);
-	if (auto it = GSettingsEntryManager->RegisteredEntries.find(pluginName); it == GSettingsEntryManager->RegisteredEntries.end())
+	auto it = GSettingsEntryManager->RegisteredEntries.find(pluginName);
+	if (it == GSettingsEntryManager->RegisteredEntries.end())
 	{
 		nosEngine.LogE("Plugin %s is not registered for editor settings, but called UnregisterEditorSettings().", pluginName.AsCStr());
 		return NOS_RESULT_FAILED;
 	}
+	std::vector<std::string> entryNames(GSettingsEntryManager->RegisteredEntries[pluginName].size());
+	size_t entryNameIndx = 0;
+	for(auto& [entryName, entry] : GSettingsEntryManager->RegisteredEntries[pluginName])
+		entryNames[entryNameIndx++] = entryName;
+	for (auto& entryName : entryNames)
+		UnregisterEntryInternal(pluginName, entryName.c_str());
 
 	auto buf = GenerateEditorItemsForPlugin(pluginName, {});
 	nosSendEditorMessageParams params{ .Message = buf, .DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_BROADCAST };
@@ -167,25 +197,6 @@ nosResult RegisterEntry(const nosSettingsEntryParams* params) {
 	return NOS_RESULT_SUCCESS;
 }
 
-void UnregisterEntry(const char* entryName) {
-	nosPluginInfo pluginInfo = {};
-	if (nosEngine.GetCallingPlugin(&pluginInfo) != NOS_RESULT_SUCCESS) {
-		nosEngine.LogE("Failed to get calling plugin info for settings entry unregistration.");
-		return;
-	}
-
-	std::string entryNameStr = entryName ? entryName : DEFAULT_SETTINGS_ENTRY_NAME;
-	auto& entryManager = settings::GSettingsEntryManager;
-	std::unique_lock lock(entryManager->RegisteredEntriesMutex);
-	auto pluginName = pluginInfo.Id.Name;
-	auto& entries = entryManager->RegisteredEntries[pluginName];
-	entries.erase(entryNameStr);
-	if (!entries.size()) {
-		entryManager->RegisteredEntries.erase(pluginName);
-		entryManager->LocalEntries.erase(pluginName);
-	}
-}
-
 nosResult UpdateEntryValue(const char* entryName, nosBuffer value) {
 	nosPluginInfo pluginInfo = {};
 	if (nosEngine.GetCallingPlugin(&pluginInfo) != NOS_RESULT_SUCCESS) {
@@ -213,6 +224,15 @@ nosResult NOSAPI_CALL OnPreUnloadPlugin()
 	return NOS_RESULT_SUCCESS;
 }
 
+void NOSAPI_CALL OnPostOtherPluginUnloaded(nosPluginIdentifier pluginId)
+{
+	nos::sys::settings::UnregisterSettings(pluginId.Name);
+}
+
+void Bind(nosPluginFunctions* pluginFunctions)
+{
+	pluginFunctions->OnPostOtherPluginUnloaded = OnPostOtherPluginUnloaded;
+}
 
 extern "C"
 {
@@ -238,6 +258,7 @@ extern "C"
 		pluginFunctions->OnEditorConnected = settings::OnEditorConnected;
 		pluginFunctions->OnMessageFromEditor = settings::OnMessageFromEditor;
 		settings::GSettingsEntryManager.reset(new settings::EntryManager());
+		Bind(pluginFunctions);
 
 		return NOS_RESULT_SUCCESS;
 	}

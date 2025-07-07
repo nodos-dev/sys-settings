@@ -31,7 +31,7 @@ struct ReadEntryList
 };
 
 nosResult UpdateEditorEntriesForPlugin(nos::Name pluginName);
-nosResult UnregisterEditorSettings(nos::Name moduleName);
+nosResult UnregisterSettings(nos::Name moduleName);
 void OnEditorConnected(uint64_t editorId);
 void OnMessageFromEditor(uint64_t editorId, nosBuffer message);
 
