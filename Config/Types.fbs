@@ -1,28 +1,17 @@
 namespace nos.sys.settings;
 
-attribute "hidden_property";
-attribute "units";
-attribute "builtin";
-attribute "skip_make";
-attribute "skip_break";
-attribute "skip_delay";
 attribute "dynamic";
-attribute "resource";
-attribute "strict_type";
 attribute "key";
 
 table SettingsEntry{
     entry_name: string (key);
     type_name: string;
+    ui_target_name: string;
     data: [ubyte] (dynamic: "type_name");
 }
 
-table ModuleSettings{
-    module_name:string;
-    module_version:string;
+// This is the root table for the global settings file.
+// If you change this or any subtable, you should bump minor version
+table SettingsList{
     settings: [SettingsEntry];
-}
-
-table ModuleSettingsList{
-    module_settings: [ModuleSettings];
 }

@@ -5,39 +5,26 @@
 #include <nosSettingsSubsystem/EditorEvents_generated.h>
 #include <unordered_map>
 #include <Nodos/Helpers.hpp>
-#include "SettingsFileManager.h"
+#include "EntryManager.h"
 #include "Globals.h"
 
 namespace nos::sys::settings {
-NOS_REGISTER_NAME_SPACED(MODULE_SETTINGS_TYPENAME, nos::sys::settings::ModuleSettings::GetFullyQualifiedName());
-NOS_REGISTER_NAME_SPACED(MODULE_SETTINGS_LIST_TYPENAME, nos::sys::settings::ModuleSettingsList::GetFullyQualifiedName());
-static constexpr char DEFAULT_SETTINGS_ENTRY_NAME[] = "default";
+NOS_REGISTER_NAME_SPACED(SETTINGS_ENTRY_TYPENAME, nos::sys::settings::SettingsEntry::GetFullyQualifiedName());
+NOS_REGISTER_NAME_SPACED(SETTINGS_LIST_TYPENAME, nos::sys::settings::SettingsList::GetFullyQualifiedName());
 
-static constexpr nosSettingsFileDirectory DIRECTORIES_CLOSEST_TO_FARTHEST[] = {
-	NOS_SETTINGS_FILE_DIRECTORY_LOCAL,
-	NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE,
-	NOS_SETTINGS_FILE_DIRECTORY_GLOBAL
-};
-
-std::string GetSettingsFileName(nosPluginInfo const& module)
-{
-	return std::string(nosEngine.GetString(module.Id.Name));
-}
-
-std::filesystem::path SettingsFileManager::GetSettingsFilePath(nosSettingsFileDirectory dir, const nosPluginInfo& moduleInfo) const
-{
-	std::string fileName = GetSettingsFileName(moduleInfo) + ".json";
+std::filesystem::path GetFilePathFromEntry(nos::Name pluginName, util::SemVer pluginVer, editor::SettingsEntryFileDirectory dir) {
+	auto fileName = pluginName.AsString() + "-" + std::string(pluginVer) + ".json";
 	switch (dir)
 	{
-	case NOS_SETTINGS_FILE_DIRECTORY_LOCAL:
+	case editor::SettingsEntryFileDirectory::LOCAL:
 	{
-		return std::filesystem::path(moduleInfo.RootFolderPath) / fileName;
+		return std::filesystem::path(GSettingsEntryManager->PluginVersions[pluginName].second.RootFolderPath) / fileName;
 	}
-	case NOS_SETTINGS_FILE_DIRECTORY_WORKSPACE:
+	case editor::SettingsEntryFileDirectory::WORKSPACE:
 	{
 		return std::filesystem::path(nosEngine.GetEnginePath(NOS_ENGINE_PATH_CONFIG)) / fileName;
 	}
-	case NOS_SETTINGS_FILE_DIRECTORY_GLOBAL:
+	case editor::SettingsEntryFileDirectory::GLOBAL:
 	{
 		return std::filesystem::path(nosEngine.GetEnginePath(NOS_ENGINE_PATH_APPDATA)) / fileName;
 	}
@@ -47,28 +34,48 @@ std::filesystem::path SettingsFileManager::GetSettingsFilePath(nosSettingsFileDi
 	}
 }
 
-SettingsFileManager::SettingsFile& SettingsFileManager::FindOrCreateSettingsFile(nosPluginInfo const& module, nosSettingsFileDirectory dir)
+std::string GetPluginSettingsFileName(nosPluginInfo const& Plugin)
 {
-	std::string fileName = GetSettingsFileName(module);
-	auto& fileList = SettingsFiles[fileName];
-	auto it = std::find_if(fileList.begin(), fileList.end(), [dir](auto& file) { return file.Directory == dir; });
-	if (it == fileList.end()) {
-		fileList.insert(fileList.begin() + dir, { {}, dir });
-		return fileList.back();
-	}
-	else {
-		return *it;
-	}
+	return std::string(nosEngine.GetString(Plugin.Id.Name)) + "-" + nosEngine.GetString(Plugin.Id.Version);
 }
 
-nosResult SettingsFileManager::ReadSettingsFile(std::filesystem::path filePath, SettingsFile& file)
+
+std::vector<std::string> Split(const std::string& str, const std::string& delim)
+{
+	std::vector<std::string> result;
+	size_t start = 0;
+	size_t end = 0;
+	while ((end = str.find(delim, start)) != std::string::npos)
+	{
+		result.push_back(str.substr(start, end - start));
+		start = end + delim.length();
+	}
+	result.push_back(str.substr(start));
+	return std::move(result);
+}
+
+std::vector<std::string> Split(const std::string& str, char delim) {
+	return Split(str, std::string(1, delim));
+}
+
+nos::util::SemVer GetPluginVersionFromName(std::string const& pluginName)
+{
+	auto const& parts = Split(pluginName, '-');
+	if (parts.size() < 2) {
+		nosEngine.LogE("Invalid plugin name format: %s", pluginName.c_str());
+		return nos::util::SemVer(0, 0, 0); // Return a default version
+	}
+	return nos::util::SemVer::ParseFrom(parts[1]);
+}
+
+nosResult EntryManager::ReadSettingsFile(std::filesystem::path filePath, ReadEntryList& readEntries)
 {
 	char* json = nullptr;
 	// Read to JSON
 	{
 		std::ifstream file(filePath);
 		if (!file || !file.is_open()) {
-			return NOS_RESULT_FAILED;
+			return NOS_RESULT_NOT_FOUND;
 		}
 
 		std::stringstream buffer;
@@ -80,110 +87,41 @@ nosResult SettingsFileManager::ReadSettingsFile(std::filesystem::path filePath, 
 		std::memcpy(json, content.c_str(), content.size() + 1); // Copy content to json
 	}
 
-	auto data = nos::GenerateBufferFromJson(NSN_MODULE_SETTINGS_LIST_TYPENAME, json);
+	auto data = GenerateBufferFromJson(NSN_SETTINGS_LIST_TYPENAME, json);
 	if (!data) {
-		nosEngine.LogE("Failed to generate buffer from JSON for nosSettingsSubsystem");
+		nosEngine.LogDE("Possible reasons;\n1) File has entries with types that are either changed or not registered yet.\n2) File is corrupted", "Failed to generate buffer from JSON for nosSettingsSubsystem");
 		return NOS_RESULT_FAILED;
 	}
+	free(json);
 
-
-	const auto& rootTable = data->As<nos::sys::settings::ModuleSettingsList>();
+	const auto& rootTable = data->As<nos::sys::settings::SettingsList>();
 	flatbuffers::Verifier verifier((uint8_t*)data->Data(), data->Size());
 	if (!rootTable->Verify(verifier)) {
 		nosEngine.LogW("Failed to verify the settings file: %s", filePath.c_str());
-		free(json);
 		return NOS_RESULT_FAILED;
 	}
 
-	file.Entries.clear();
-	if (rootTable->module_settings()) {
-		for (auto it : *rootTable->module_settings()) {
-			if (it) {
-				for (const auto& entry : *it->settings()) {
-					file.Entries[nos::Name(it->module_version()->str())][entry->entry_name()->str()] = {entry->type_name()->str(), entry->data()};
-				}
-			}
-		}
+	std::unique_lock lock(readEntries.FileMutex);
+	readEntries.Entries.clear();
+	if (!rootTable->settings())
+		return NOS_RESULT_SUCCESS;
+
+	for (auto it : *rootTable->settings()) {
+		if (!it)
+			continue;
+
+		auto ver = GetPluginVersionFromName(filePath.filename().string());
+		readEntries.Entries[it->entry_name()->str()].push_back({});
+		auto& entry = readEntries.Entries[it->entry_name()->str()].back();
+		entry = { ver , {nos::Name(it->type_name()->c_str()), nos::Buffer(it->data())} };
 	}
-	free(json);
 
 	return NOS_RESULT_SUCCESS;
 }
 
-nosResult SettingsFileManager::ReadSettings(nosSettingsEntryParams* params)
+nosResult EntryManager::WriteSettingsFile(nos::Name pluginName, util::SemVer pluginVer, editor::SettingsEntryFileDirectory dir, const ReadEntryList& entries) const
 {
-	nosPluginInfo module = {};
-	if (nosEngine.GetCallingPlugin(&module) != NOS_RESULT_SUCCESS)
-		return NOS_RESULT_FAILED;
-	auto fileName = GetSettingsFileName(module);
-	std::unique_lock lock(SettingsFilesMutex);
-	// From closest to farthest, try to read the settings file
-	for (uint32_t dirIndx = 0; dirIndx < sizeof(DIRECTORIES_CLOSEST_TO_FARTHEST) / sizeof(DIRECTORIES_CLOSEST_TO_FARTHEST[0]); dirIndx++) {
-		auto dir = DIRECTORIES_CLOSEST_TO_FARTHEST[dirIndx];
-		SettingsFile& settings = FindOrCreateSettingsFile(module, dir);
-
-		auto readFileResult = ReadSettingsFile(GetSettingsFilePath(dir, module), settings);
-		if (readFileResult != NOS_RESULT_SUCCESS)
-			continue;
-
-		if (settings.Entries.find(module.Id.Version) == settings.Entries.end())
-			continue;
-
-		auto& entries = settings.Entries[module.Id.Version];
-
-		// TypeName, Data
-		std::pair<std::string, nos::Buffer>* entryData = nullptr;
-		if (params->EntryName == nullptr)
-		{
-			if (!entries.size())
-				continue;
-			entryData = &entries.begin()->second;
-		}
-		else {
-			auto entryIt = entries.find(params->EntryName);
-			if (entryIt == entries.end())
-				continue;
-			entryData = &entryIt->second;
-		}
-
-		auto typeName = nos::Name(entryData->first);
-		if (params->TypeName.ID && params->TypeName != typeName) {
-			nosEngine.LogE("Settings type mismatch for module %s for entry %s", nosEngine.GetString(module.Id.Name), params->EntryName);
-			return NOS_RESULT_FAILED;
-		}
-		auto& localBuf = entryData->second;
-		params->Buffer = EngineBuffer::Allocate(localBuf.Size()).Release();
-		
-		params->TypeName = typeName;
-
-		memcpy(params->Buffer.Data, localBuf.Data(), localBuf.Size());
-		return NOS_RESULT_SUCCESS;
-	}
-	nosEngine.LogE("Settings not found for module %s", nosEngine.GetString(module.Id.Name));
-	return NOS_RESULT_FAILED;
-}
-
-nosResult SettingsFileManager::WriteSettings(const nosSettingsEntryParams* params)
-{
-	nosPluginInfo module = {};
-	if (nosEngine.GetCallingPlugin(&module) != NOS_RESULT_SUCCESS)
-		return NOS_RESULT_FAILED;
-	return WriteSettings(params, module);
-}
-
-nosResult SettingsFileManager::WriteSettings(const nosSettingsEntryParams* params, const nosPluginInfo& module)
-{
-	std::unique_lock lock(SettingsFilesMutex);
-	SettingsFile& settings = FindOrCreateSettingsFile(module, params->Directory);
-	auto& entry = settings.Entries[module.Id.Version][params->EntryName ? params->EntryName : DEFAULT_SETTINGS_ENTRY_NAME];
-	entry.first = nos::Name(params->TypeName);
-	entry.second = params->Buffer;
-	return WriteSettingsFile(settings, module);
-}
-
-nosResult SettingsFileManager::WriteSettingsFile(const SettingsFile& settingsFile, const nosPluginInfo& info) const
-{
-	std::ofstream file(GetSettingsFilePath(settingsFile.Directory, info));
+	std::ofstream file(GetFilePathFromEntry(pluginName, pluginVer, dir));
 	flatbuffers::FlatBufferBuilder builder;
 
 	if (!file || !file.is_open()) {
@@ -191,24 +129,22 @@ nosResult SettingsFileManager::WriteSettingsFile(const SettingsFile& settingsFil
 		return NOS_RESULT_FAILED;
 	}
 
-	TModuleSettingsList settingsList;
-	for (auto const& moduleVersion : settingsFile.Entries) {
-		nos::sys::settings::TModuleSettings moduleSettings;
-		moduleSettings.module_name = nos::Name(info.Id.Name).AsString();
-		moduleSettings.module_version = nos::Name(moduleVersion.first).AsString();
-		for (auto const& settingsEntries : moduleVersion.second) {
-			moduleSettings.settings.push_back(std::unique_ptr<nos::sys::settings::TSettingsEntry>(new nos::sys::settings::TSettingsEntry()));
-			auto& tEntry = moduleSettings.settings.back();
-			tEntry->data = settingsEntries.second.second;
-			tEntry->entry_name = settingsEntries.first;
-			tEntry->type_name = settingsEntries.second.first;
+	TSettingsList settingsList;
+	for (auto const& [entryName, pluginVerAndEntryVal] : entries.Entries) {
+		for(auto const& [entryVer, entryVal] : pluginVerAndEntryVal) {
+			if (entryVer != pluginVer)
+				continue;
+			settingsList.settings.push_back(std::make_unique<nos::sys::settings::TSettingsEntry>());
+			auto& tEntry = settingsList.settings.back();
+			tEntry->entry_name = entryName;
+			tEntry->type_name = entryVal.first.AsString();
+			tEntry->data = entryVal.second;
 		}
-		settingsList.module_settings.push_back(std::make_unique<TModuleSettings>(moduleSettings));
 	}
 
 	auto data = nos::Buffer::From(settingsList);
 
-	auto json = GenerateJsonFromBuffer(NSN_MODULE_SETTINGS_LIST_TYPENAME, data);
+	auto json = GenerateJsonFromBuffer(NSN_SETTINGS_LIST_TYPENAME, data);
 	if (!json) {
 		nosEngine.LogE("Failed to generate JSON from buffer for nosSettingsSubsystem");
 		return NOS_RESULT_FAILED;
@@ -219,4 +155,83 @@ nosResult SettingsFileManager::WriteSettingsFile(const SettingsFile& settingsFil
 	return NOS_RESULT_SUCCESS;
 };
 
+nosResult EntryManager::TryGetOrCreateFromClosestValidEntry(nos::Name pluginName, std::string entryName, RegisteredEntry& entry) {
+	auto const& requestedPluginVer = PluginVersions[pluginName].first;
+	nos::util::SemVer entryVer;
+	EntryTypeNameBufferPair entryVal;
+	auto searchDirectory = [&](ReadEntryList& entryList) {
+		std::shared_lock<std::shared_mutex> lock(entryList.FileMutex); // Lock the mutex to ensure thread safety
+		if (auto const& entriesFromDifVersions = entryList.Entries.find(entryName); entriesFromDifVersions != entryList.Entries.end()) {
+			nosResult result = NOS_RESULT_NOT_FOUND;
+			for (auto const& [pluginVer, entryValPair] : entriesFromDifVersions->second | std::views::reverse) {
+				if (pluginVer > requestedPluginVer)
+					continue;
+
+				if (pluginVer <= requestedPluginVer) {
+					result = entry.UpdateCallback(entryName.c_str(), entryValPair.second);
+					entryVer = pluginVer;
+					entryVal = entryValPair;
+					entry.ReadEntryPluginVer = entryVer;
+					break;
+				}
+			}
+			if (result == NOS_RESULT_SUCCESS) {
+				return UpdateEntry(pluginName, entryVer, entry.SaveDir, entryName, entryVal);
+			}
+		}
+		return NOS_RESULT_FAILED;
+	};
+
+	if (auto localFile = LocalEntries.find(pluginName); localFile != LocalEntries.end()) {
+		if(searchDirectory(localFile->second) == NOS_RESULT_SUCCESS)
+			return NOS_RESULT_SUCCESS;
+	}
+	if (auto workspaceFile = WorkspaceEntries.find(pluginName); workspaceFile != WorkspaceEntries.end()) {
+		if (searchDirectory(workspaceFile->second) == NOS_RESULT_SUCCESS)
+			return NOS_RESULT_SUCCESS;
+	}
+	if (auto globalFile = GlobalEntries.find(pluginName); globalFile != GlobalEntries.end()) {
+		if (searchDirectory(globalFile->second) == NOS_RESULT_SUCCESS)
+			return NOS_RESULT_SUCCESS;
+	}
+	return NOS_RESULT_FAILED;
+}
+
+
+nosResult EntryManager::UpdateEntry(nos::Name pluginName, nos::util::SemVer pluginVersion, editor::SettingsEntryFileDirectory dir, std::string const& entryName, EntryTypeNameBufferPair entryVal) {
+	auto addOrUpdateEntry = [&](ReadEntryList& entryList, editor::SettingsEntryFileDirectory dir) {
+		auto updateEntry = [&](nos::util::SemVer entrySemVer) -> nosResult {
+			auto res = WriteSettingsFile(pluginName, entrySemVer, dir, entryList);
+			if(res != NOS_RESULT_SUCCESS) {
+				nosEngine.LogE("Failed to write settings file for plugin %s with version %s", pluginName.AsString().c_str(), std::string(pluginVersion).c_str());
+				return res;
+			}
+			// Update editor if the entry is registered
+			if (auto pluginEntries = GSettingsEntryManager->RegisteredEntries.find(pluginName); pluginEntries != GSettingsEntryManager->RegisteredEntries.end())
+				if (auto entry = pluginEntries->second.find(entryName); entry != pluginEntries->second.end())
+					entry->second.LastValue = entryVal.second;
+					return UpdateEditorEntriesForPlugin(pluginName);
+			};
+
+		auto& entriesFromDifVersions = entryList.Entries[entryName];
+
+		for (size_t i = 0; i < entriesFromDifVersions.size(); i++) {
+			auto const& entryVer = entriesFromDifVersions[i].first;
+			if(entryVer == pluginVersion) {
+				entriesFromDifVersions[i].second = entryVal;
+				return updateEntry(entriesFromDifVersions[i].first);
+			}
+			if(entryVer > pluginVersion) {
+				// If the version is greater, we can insert before it
+				entriesFromDifVersions.insert(entriesFromDifVersions.begin() + i, {pluginVersion, entryVal});
+				return updateEntry(entriesFromDifVersions[i].first);
+			}
+		}
+
+		entriesFromDifVersions.push_back({ pluginVersion, entryVal }); // If we reach here, we can just append
+		return updateEntry(entriesFromDifVersions.back().first);
+	};
+
+	return addOrUpdateEntry(LocalEntries[pluginName], dir);
+}
 }
