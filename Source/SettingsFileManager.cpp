@@ -232,6 +232,11 @@ nosResult EntryManager::UpdateEntry(nos::Name pluginName, nos::util::SemVer plug
 		return updateEntry(entriesFromDifVersions.back().first);
 	};
 
-	return addOrUpdateEntry(LocalEntries[pluginName], dir);
+	std::unordered_map<nos::Name, ReadEntryList>& entriesMap = (dir == editor::SettingsEntryFileDirectory::LOCAL) ? LocalEntries :
+		(dir == editor::SettingsEntryFileDirectory::GLOBAL) ? GlobalEntries : WorkspaceEntries;
+	if (entriesMap.find(pluginName) == entriesMap.end()) {
+		nosEngine.LogE("Plugin %s is not registered for editor settings, but called UpdateEntry().", pluginName.AsCStr());
+	}
+	return addOrUpdateEntry(entriesMap[pluginName], dir);
 }
 }
