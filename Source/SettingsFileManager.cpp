@@ -4,7 +4,6 @@
 #include <nosSettingsSubsystem/Types_generated.h>
 #include <nosSettingsSubsystem/EditorEvents_generated.h>
 #include <unordered_map>
-#include <Nodos/Helpers.hpp>
 #include "EntryManager.h"
 #include "Globals.h"
 

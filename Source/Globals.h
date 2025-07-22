@@ -3,7 +3,7 @@
 #include <nosSettingsSubsystem/nosSettingsSubsystem.h>
 #include <nosSettingsSubsystem/EditorEvents_generated.h>
 #include <unordered_map>
-#include <Nodos/Helpers.hpp>
+#include <Nodos/Plugin.hpp>
 
 namespace nos::sys::settings
 {

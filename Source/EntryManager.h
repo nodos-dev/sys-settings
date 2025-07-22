@@ -3,9 +3,9 @@
 #include <nosSettingsSubsystem/nosSettingsSubsystem.h>
 #include <nosSettingsSubsystem/Types_generated.h>
 #include <unordered_map>
-#include <Nodos/Helpers.hpp>
-#include <nosUtil/StringUtils.h>
-#include <nosUtil/VersionUtils.h>
+#include <Nodos/Plugin.hpp>
+#include <Nodos/Utils/StringUtils.hpp>
+#include <Nodos/Utils/VersionUtils.hpp>
 
 namespace nos::sys::settings
 {
