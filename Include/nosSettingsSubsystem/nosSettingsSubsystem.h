@@ -45,7 +45,7 @@ typedef struct nosSettingsSubsystem
 #define NOS_SETTINGS_SUBSYSTEM_NAME "nos.sys.settings"
 
 #define NOS_SETTINGS_SUBSYSTEM_VERSION_MAJOR 1
-#define NOS_SETTINGS_SUBSYSTEM_VERSION_MINOR 0
+#define NOS_SETTINGS_SUBSYSTEM_VERSION_MINOR 1
 
 extern struct nosPluginInfo nosSettingsModuleInfo;
 extern nosSettingsSubsystem* nosSettings;
@@ -58,7 +58,7 @@ extern nosSettingsSubsystem* nosSettings;
 
 #if NOS_HAS_CPLUSPLUS_20
 #include "Types_generated.h"
-#include <Nodos/Name.hpp>
+#include <Nodos/Plugin.hpp>
 
 namespace nos::sys::settings {
 	inline nosResult RegisterEntry(std::string const& entryName, std::string const& typeName, nosPfnSettingsEntryUpdate updateCallback, std::optional<nosBuffer> defaultVal = std::nullopt, std::optional<std::string> displayName = std::nullopt, std::optional<std::string> targetName = std::nullopt, std::optional<nos::fb::TVisualizer> visualizer = std::nullopt) {
