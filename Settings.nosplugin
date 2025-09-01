@@ -2,14 +2,11 @@
     "info": {
         "id": {
             "name": "nos.sys.settings",
-            "version": "1.1.0"
+            "version": "2.0.0"
         },
         "display_name": "Settings Subsystem",
         "description": "Store all module settings",
         "dependencies": []
     },
-    "binary_path": "Binaries/nosSettingsSubsystem",
-    "custom_types": [
-        "Config/Types.fbs"
-    ]
+    "binary_path": "Binaries/nosSettingsSubsystem"
 }
