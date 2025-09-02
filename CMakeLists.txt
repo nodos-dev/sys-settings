@@ -16,7 +16,7 @@ if (NOT DEFINED NOS_SDK_DIR)
     message(FATAL_ERROR "Nodos SDK with version ${USE_NOS_SDK_VERSION} not found, please either install it or choose different version")
 endif()
 
-nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Include/nosSettingsSubsystem" "cpp" "${NOS_SDK_DIR}/types" nosSettingsSubsystem_generated)
+nos_generate_flatbuffers("${CMAKE_CURRENT_SOURCE_DIR}/Types" "${CMAKE_CURRENT_SOURCE_DIR}/Include/nosSettingsSubsystem" "cpp" "${NOS_SDK_DIR}/Types" nosSettingsSubsystem_generated)
 list(APPEND MODULE_DEPENDENCIES_TARGETS ${NOS_PLUGIN_SDK_TARGET} nosSettingsSubsystem_generated)
 
 list(APPEND INCLUDE_FOLDERS ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/Include")
