@@ -45,7 +45,7 @@ typedef struct nosSettingsSubsystem
 #define NOS_SETTINGS_SUBSYSTEM_NAME "nos.sys.settings"
 
 #define NOS_SETTINGS_SUBSYSTEM_VERSION_MAJOR 2
-#define NOS_SETTINGS_SUBSYSTEM_VERSION_MINOR 0
+#define NOS_SETTINGS_SUBSYSTEM_VERSION_MINOR 1
 
 extern struct nosPluginInfo nosSettingsModuleInfo;
 extern nosSettingsSubsystem* nosSettings;
