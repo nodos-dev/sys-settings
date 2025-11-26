@@ -9,7 +9,7 @@ if (NOT WITH_NODOS_WORKSPACE)
     "Place this repo under nodos-workspace/Module folder and run cmake -S ./Toolchain/CMake -B Build from workspace root.")
 endif()
 
-set(USE_NOS_PLUGIN_SDK_VERSION "40.0.0")
+set(USE_NOS_PLUGIN_SDK_VERSION "41.0")
 add_compile_definitions(NOS_DISABLE_DEPRECATED)
 nos_find_plugin_sdk(${USE_NOS_PLUGIN_SDK_VERSION} NOS_PLUGIN_SDK_TARGET NOS_SDK_DIR)
 if (NOT DEFINED NOS_SDK_DIR)
