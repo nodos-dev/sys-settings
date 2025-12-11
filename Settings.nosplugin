@@ -9,6 +9,6 @@
         "dependencies": [
         ]
     },
-    "binary_path": "Binaries/nos_sys_settings",
+    "binary_path": "Binaries/nosSysSettings",
     "sdk_dependency": "40.0"
 }
