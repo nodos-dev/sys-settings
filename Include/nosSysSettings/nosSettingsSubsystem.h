@@ -57,7 +57,7 @@ extern nosSettingsSubsystem* nosSettings;
 #define NOS_SETTINGS_IMPORT() NOS_IMPORT_DEP(NOS_SETTINGS_SUBSYSTEM_NAME, nosSettingsModuleInfo, nosSettings)
 
 #if NOS_HAS_CPLUSPLUS_20
-#include "Types_generated.h"
+#include "nosSysSettings/Types_generated.h"
 #include <Nodos/Plugin.hpp>
 
 namespace nos::sys::settings {
