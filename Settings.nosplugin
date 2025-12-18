@@ -10,5 +10,5 @@
         ]
     },
     "binary_path": "Binaries/nosSysSettings",
-    "sdk_dependency": "40.0"
+    "sdk_version": "40.0"
 }
