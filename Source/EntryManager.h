@@ -1,7 +1,7 @@
 // Copyright Nodos AS. All Rights Reserved.
 #include <Nodos/PluginAPI.h>
-#include <nosSettingsSubsystem/nosSettingsSubsystem.h>
-#include <nosSettingsSubsystem/Types_generated.h>
+#include <nosSysSettings/nosSettingsSubsystem.h>
+#include <nosSysSettings/Types_generated.h>
 #include <unordered_map>
 #include <Nodos/Plugin.hpp>
 #include <Nodos/Utils/StringUtils.hpp>

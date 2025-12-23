@@ -6,7 +6,9 @@
         },
         "display_name": "Settings Subsystem",
         "description": "Store all module settings",
-        "dependencies": []
+        "dependencies": [
+        ]
     },
-    "binary_path": "Binaries/nosSettingsSubsystem"
+    "binary_path": "Binaries/nosSysSettings",
+    "sdk_version": "40.0"
 }
