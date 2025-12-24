@@ -8,5 +8,7 @@
         "description": "Store all module settings",
         "dependencies": []
     },
-    "binary_path": "Binaries/nosSettingsSubsystem"
+    "binary_path": "Binaries/nosSysSettings",
+	"sdk_version": "41.0",
+	"schema_version": "1.4-v1"
 }

@@ -1,7 +1,7 @@
 // Copyright Nodos AS. All Rights Reserved.
 #include <Nodos/PluginAPI.h>
-#include <nosSettingsSubsystem/nosSettingsSubsystem.h>
-#include <nosSettingsSubsystem/EditorEvents_generated.h>
+#include <nosSysSettings/nosSettingsSubsystem.h>
+#include <nosSysSettings/EditorEvents_generated.h>
 #include <unordered_map>
 #include "EntryManager.h"
 #include "Globals.h"
@@ -70,10 +70,7 @@ nosResult UnregisterSettings(nos::Name pluginName)
 	std::shared_lock lock(GSettingsEntryManager->RegisteredEntriesMutex);
 	auto it = GSettingsEntryManager->RegisteredEntries.find(pluginName);
 	if (it == GSettingsEntryManager->RegisteredEntries.end())
-	{
-		nosEngine.LogE("Plugin %s is not registered for editor settings, but called UnregisterEditorSettings().", pluginName.AsCStr());
-		return NOS_RESULT_FAILED;
-	}
+		return NOS_RESULT_SUCCESS;
 	std::vector<std::string> entryNames(GSettingsEntryManager->RegisteredEntries[pluginName].size());
 	size_t entryNameIndx = 0;
 	for(auto& [entryName, entry] : GSettingsEntryManager->RegisteredEntries[pluginName])
