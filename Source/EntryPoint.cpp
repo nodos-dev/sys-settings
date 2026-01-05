@@ -35,8 +35,9 @@ nos::Buffer GenerateEditorItemsForPlugin(nos::Name pluginName, const std::unorde
 nosResult UpdateEditorEntriesForPlugin(nos::Name pluginName)
 {
 	auto buf = GenerateEditorItemsForPlugin(pluginName, GSettingsEntryManager->RegisteredEntries[pluginName]);
-	nosSendEditorMessageParams params{ .Message = buf,
-										.DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_BROADCAST };
+	nosSendEditorMessageParams params{.TypeName = NOS_NAME("nos.sys.settings.editor.SettingsUpdateFromSubsystem"),
+									  .Message = buf,
+									  .DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_BROADCAST};
 	nosEngine.SendEditorMessage(&params);
 	return NOS_RESULT_SUCCESS;
 }
@@ -78,7 +79,9 @@ nosResult UnregisterSettings(nos::Name pluginName)
 		UnregisterEntryInternal(pluginName, entryName.c_str());
 
 	auto buf = GenerateEditorItemsForPlugin(pluginName, {});
-	nosSendEditorMessageParams params{ .Message = buf, .DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_BROADCAST };
+	nosSendEditorMessageParams params{.TypeName = NOS_NAME("nos.sys.settings.editor.SettingsUpdateFromSubsystem"),
+									  .Message = buf,
+									  .DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_BROADCAST};
 	nosEngine.SendEditorMessage(&params);
 	return NOS_RESULT_SUCCESS;
 }
@@ -88,9 +91,10 @@ void OnEditorConnected(uint64_t editorId)
 	std::shared_lock lock(GSettingsEntryManager->RegisteredEntriesMutex);
 	for (auto const& [pluginName, entries] : GSettingsEntryManager->RegisteredEntries) {
 		auto message = GenerateEditorItemsForPlugin(pluginName, entries);
-		nosSendEditorMessageParams params{ .Message = message,
-											.DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_TO_SELECTED,
-											.ToSelected = {editorId} };
+		nosSendEditorMessageParams params{.TypeName = NOS_NAME("nos.sys.settings.editor.SettingsUpdateFromSubsystem"),
+										  .Message = message,
+										  .DispatchType = NOS_EDITOR_MESSAGE_DISPATCH_TYPE_TO_SELECTED,
+										  .ToSelected = {editorId}};
 		nosEngine.SendEditorMessage(&params);
 	}
 }
