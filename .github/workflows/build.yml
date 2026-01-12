@@ -12,7 +12,7 @@ on:
         type: choice
         options:
           - Only Changed
-          - All Modules
+          - All Plugins
           - None
       clean:
         description: 'Clean build'
