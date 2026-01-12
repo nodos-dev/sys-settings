@@ -14,11 +14,6 @@ on:
           - Only Changed
           - All Modules
           - None
-      nodos_sdk_version:
-        description: 'Nodos SDK Version'
-        required: false
-        default: ''
-        type: string
       clean:
         description: 'Clean build'
         required: false
