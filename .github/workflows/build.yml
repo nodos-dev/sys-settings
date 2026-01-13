@@ -8,12 +8,17 @@ on:
       publish_mode:
         description: 'Publish Mode'
         required: true
-        default: 'Only Changed'
+        default: 'If Changed'
         type: choice
         options:
-          - Only Changed
-          - All Plugins
+          - If Changed
+          - Force
           - None
+      plugin_name:
+        description: 'Single plugin name (optional)'
+        required: false
+        default: ''
+        type: string
       clean:
         description: 'Clean build'
         required: false
@@ -63,6 +68,7 @@ jobs:
     with:
       ref_name: ${{ github.ref_name }}
       publish_mode: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.publish_mode || 'None' }}
+      plugin_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.plugin_name || '' }}
       clean: ${{ github.event_name == 'workflow_dispatch' && fromJson(github.event.inputs.clean) || false }}
       build_number: ${{ needs.set-build-number.outputs.build_number }}
       sign_binaries: ${{github.event_name == 'workflow_dispatch' && fromJson(github.event.inputs.sign_binaries) || false }}
