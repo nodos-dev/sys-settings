@@ -6,9 +6,11 @@
 #define NOS_SETTINGS_SUBSYSTEM_H_INCLUDED
 #include "Nodos/Types.h"
 
+NOS_BEGIN_C_LINKAGE
+
 // NOS_RESULT_SUCCESS: Item value will be serialized to the WriteDirectories
 // NOS_RESULT_FAIL: Default item value will be serialized to the WriteDirectories
-typedef nosResult(*nosPfnSettingsEntryUpdate)(const char* entryName, nosBuffer itemValue);
+typedef nosResult(NOSAPI_CALL *nosPfnSettingsEntryUpdate)(const char* entryName, nosBuffer itemValue);
 typedef uint64_t nosSettingsEntryId;
 
 #if NOS_HAS_CPLUSPLUS_20
@@ -56,6 +58,8 @@ extern nosSettingsSubsystem* nosSettings;
 
 #define NOS_SETTINGS_IMPORT() NOS_IMPORT_DEP(NOS_SETTINGS_SUBSYSTEM_NAME, nosSettingsModuleInfo, nosSettings)
 
+NOS_END_C_LINKAGE
+
 #if NOS_HAS_CPLUSPLUS_20
 #include "nosSysSettings/Types_generated.h"
 #include <Nodos/Plugin.hpp>
@@ -94,6 +98,5 @@ namespace nos::sys::settings {
 #endif // NOS_HAS_CPLUSPLUS_20
 
 #pragma endregion
-
 
 #endif // NOS_SETTINGS_SUBSYSTEM_H_INCLUDED
